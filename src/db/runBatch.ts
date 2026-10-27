@@ -21,6 +21,9 @@ export const DB_BATCH_SIZE = 100;
  * - Postgres: statements run sequentially inside `db.transaction(tx => ...)`
  *   (atomic, and in array order to match D1's batch semantics).
  *
+ * Resolves to each statement's result in order, so a caller can inspect a
+ * `.returning()` statement (e.g. to detect a guarded update that matched no row).
+ *
  * IMPORTANT: build statements from the `tx` handle the callback receives, NOT
  * the module-level `db`. On Postgres, statements built from the outer `db` would
  * execute outside the transaction. Returning the (unawaited) Drizzle query
@@ -28,7 +31,7 @@ export const DB_BATCH_SIZE = 100;
  */
 export async function runBatch(
   build: (tx: BatchExecutor) => readonly Promise<unknown>[],
-): Promise<void> {
+): Promise<unknown[]> {
   if (getDatabaseProvider() === "postgres") {
     // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- pg tx exposes the same query builder surface as d1Db
     const pg = pgDb as unknown as {
@@ -36,18 +39,19 @@ export async function runBatch(
         fn: (tx: BatchExecutor) => Promise<unknown>,
       ) => Promise<unknown>;
     };
+    const results: unknown[] = [];
     await pg.transaction(async (tx) => {
       // Sequential to mirror D1's ordered batch contract.
-      for (const statement of build(tx)) await statement;
+      for (const statement of build(tx)) results.push(await statement);
     });
-    return;
+    return results;
   }
 
   const statements = build(d1Db);
-  if (statements.length === 0) return;
+  if (statements.length === 0) return [];
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- d1 query builders are BatchItems; length checked above
   const batch = statements as unknown as [BatchStatement, ...BatchStatement[]];
-  await d1Db.batch(batch);
+  return d1Db.batch(batch);
 }
 
 /**
