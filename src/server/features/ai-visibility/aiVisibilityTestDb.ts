@@ -25,9 +25,11 @@ export async function createAiVisibilityTestDb() {
   const db = drizzle(client);
   /** Runs the production statements in order against SQLite. */
   const batch: typeof runBatch = async (build) => {
+    const results: unknown[] = [];
     // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- libsql exposes the D1 SQLite query-builder surface the repositories use
-    for (const statement of build(db as unknown as Parameters<typeof build>[0]))
-      await statement;
+    const tx = db as unknown as Parameters<typeof build>[0];
+    for (const statement of build(tx)) results.push(await statement);
+    return results;
   };
   /** Clears every row, then adds organization "organization" and its project "project". */
   const seedProject = () =>

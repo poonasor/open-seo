@@ -178,7 +178,7 @@ async function moveStage(params: {
   live?: { liveAt: string; remeasureDueAt: string };
 }) {
   const at = new Date().toISOString();
-  await runBatch((tx) => [
+  const [moved] = await runBatch((tx) => [
     tx
       .update(findings)
       .set({ stage: params.to, updatedAt: at, ...params.live })
@@ -186,21 +186,36 @@ async function moveStage(params: {
         and(
           eq(findings.projectId, params.projectId),
           eq(findings.id, params.id),
-          // A concurrent move leaves the stage changed, so this one no-ops
-          // instead of overwriting it.
+          // A concurrent move leaves the stage changed, so this one matches
+          // no row instead of overwriting it.
           eq(findings.stage, params.from),
         ),
-      ),
-    tx.insert(findingStageEvents).values({
-      id: crypto.randomUUID(),
-      findingId: params.id,
-      fromStage: params.from,
-      toStage: params.to,
-      actor: params.actor,
-      note: params.note,
-      at,
-    }),
+      )
+      .returning({ id: findings.id }),
+    // Only record the event when the update above took effect in this same
+    // batch/transaction (its stage and timestamp are ours).
+    tx.insert(findingStageEvents).select(
+      tx
+        .select({
+          id: sql<string>`${crypto.randomUUID()}`.as("id"),
+          findingId: sql<string>`${findings.id}`.as("finding_id"),
+          fromStage: sql<FindingStage>`${params.from}`.as("from_stage"),
+          toStage: sql<FindingStage>`${params.to}`.as("to_stage"),
+          actor: sql<string>`${params.actor}`.as("actor"),
+          note: sql<string | null>`${params.note}`.as("note"),
+          at: sql<string>`${at}`.as("at"),
+        })
+        .from(findings)
+        .where(
+          and(
+            eq(findings.id, params.id),
+            eq(findings.stage, params.to),
+            eq(findings.updatedAt, at),
+          ),
+        ),
+    ),
   ]);
+  return Array.isArray(moved) && moved.length > 0;
 }
 
 export const FindingsRepository = {

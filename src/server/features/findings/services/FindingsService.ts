@@ -201,7 +201,7 @@ async function moveStage(
   const liveAt = startsClock
     ? (input.liveAt ?? new Date().toISOString())
     : undefined;
-  await FindingsRepository.moveStage({
+  const moved = await FindingsRepository.moveStage({
     projectId,
     id,
     from: current.stage,
@@ -212,6 +212,12 @@ async function moveStage(
       ? { liveAt, remeasureDueAt: remeasureDueAt(liveAt) }
       : undefined,
   });
+  if (!moved) {
+    throw new AppError(
+      "CONFLICT",
+      `${id} changed stage while it was being moved; reload it and try again.`,
+    );
+  }
   return getFinding(projectId, id);
 }
 

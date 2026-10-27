@@ -29,7 +29,9 @@ beforeAll(async () => {
   vi.doMock("@/db", () => ({ db: testDb }));
   vi.doMock("@/db/runBatch", () => ({
     runBatch: async (build: (tx: unknown) => readonly Promise<unknown>[]) => {
-      for (const statement of build(testDb)) await statement;
+      const results: unknown[] = [];
+      for (const statement of build(testDb)) results.push(await statement);
+      return results;
     },
   }));
   await client.executeMultiple(
@@ -139,6 +141,27 @@ describe("stage transitions", () => {
   it("allows Finding -> Spec for technical fixes", async () => {
     await create();
     expect((await move("spec")).finding.stage).toBe("spec");
+  });
+
+  it("rejects a move that lost a race and records no event for it", async () => {
+    await create();
+    // Both read the finding at "finding"; only one guarded update can win.
+    const [first, second] = await Promise.allSettled([
+      move("brief"),
+      move("spec"),
+    ]);
+    expect(first.status).toBe("fulfilled");
+    expect(second).toMatchObject({
+      status: "rejected",
+      reason: { code: "CONFLICT" },
+    });
+
+    const { finding, events } = await FindingsService.getFinding(
+      "proj_1",
+      "PM-F001",
+    );
+    expect(finding.stage).toBe("brief");
+    expect(events.map((e) => e.toStage)).toEqual(["finding", "brief"]);
   });
 
   it("refuses to skip to Live unless importing", async () => {
