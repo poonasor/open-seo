@@ -77,6 +77,7 @@ import {
   listFindingsTool,
   moveFindingStageTool,
   remeasureFindingTool,
+  syncFindingsVikunjaTool,
   updateFindingTool,
 } from "@/server/mcp/tools/findings-tools";
 import { listSavedKeywordsTool } from "@/server/mcp/tools/list-saved-keywords";
@@ -266,6 +267,7 @@ export function registerOpenSeoTools(
   register(updateFindingTool);
   register(moveFindingStageTool);
   register(remeasureFindingTool);
+  register(syncFindingsVikunjaTool);
   register(listSavedKeywordsTool);
   register(removeSavedKeywordsTool);
   register(researchKeywordsTool);

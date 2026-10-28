@@ -1,4 +1,5 @@
 import {
+  boolean,
   index,
   integer,
   pgTable,
@@ -28,6 +29,9 @@ export const findingPrefixes = pgTable(
     prefix: text("prefix").notNull(),
     site: text("site").notNull(),
     lastNumber: integer("last_number").notNull().default(0),
+    // The Vikunja project whose tasks mirror this prefix's findings (read-only
+    // sync); null = not mapped.
+    vikunjaProjectId: text("vikunja_project_id"),
     createdAt: text("created_at").notNull().default(isoNow),
   },
   (table) => [
@@ -69,6 +73,8 @@ export const findings = pgTable(
     routeStatus: text("route_status"),
     vikunjaTaskId: text("vikunja_task_id"),
     vikunjaTaskUrl: text("vikunja_task_url"),
+    // The linked Vikunja task's done flag; null until a task is linked.
+    vikunjaDone: boolean("vikunja_done"),
     liveAt: text("live_at"),
     remeasureDueAt: text("remeasure_due_at"),
     verdict: text("verdict", {

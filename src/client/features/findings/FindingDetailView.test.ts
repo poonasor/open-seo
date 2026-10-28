@@ -21,6 +21,7 @@ const detail: Detail = {
     routeStatus: null,
     vikunjaTaskId: "42",
     vikunjaTaskUrl: "https://tasks.example.com/tasks/42",
+    vikunjaDone: false,
     liveAt: null,
     remeasureDueAt: null,
     verdict: "moved",

@@ -66,6 +66,7 @@ docker compose up -d --force-recreate init web crawl-gateway
 | `OPENROUTER_MODEL`                         | Optional model override                                                      |
 | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | Optional Search Console and Analytics linking with your own Google OAuth app |
 | `CONTEXT_API_KEY`                          | Optional JavaScript rendering for site audits                                |
+| `VIKUNJA_API_URL`, `VIKUNJA_API_TOKEN`     | Optional read-only Vikunja sync for marketing findings (URL ends `/api/v1`)  |
 
 For Google, register your own OAuth application with these redirect URLs under your public address: `/api/gsc/oauth/callback` for Search Console and `/api/ga4/oauth/callback` for Analytics. See [`SELF_HOSTING_GOOGLE_SEARCH_CONSOLE.md`](./SELF_HOSTING_GOOGLE_SEARCH_CONSOLE.md). Signing in with Google is not offered; accounts use email and password.
 

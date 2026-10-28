@@ -11,6 +11,7 @@ import { recordRemeasure } from "@/server/features/findings/services/remeasure";
 import { remeasureWindows } from "@/server/features/findings/remeasureRules";
 import { recordBaseline } from "@/server/features/findings/services/baselineSnapshot";
 import type { FindingPatch } from "@/server/features/findings/repositories/FindingsRepository";
+import { VikunjaSync } from "@/server/features/findings/vikunja/vikunjaSync";
 import { AppError } from "@/server/lib/errors";
 
 // Marketing findings: creation and id allocation, field edits, and the staged
@@ -269,6 +270,7 @@ async function remeasureFinding(projectId: string, id: string, actor: string) {
 }
 
 export const FindingsService = {
+  syncFindingsVikunja: VikunjaSync.syncFindingsVikunja,
   remeasureFinding,
   createFinding,
   getFinding,

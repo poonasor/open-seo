@@ -342,3 +342,71 @@ export const remeasureFindingTool = {
     },
   ),
 };
+
+const syncVikunjaInputSchema = {
+  projectId: projectIdSchema,
+  dryRun: z
+    .boolean()
+    .default(true)
+    .describe(
+      "Default true: only report the planned changes. Pass false to apply them.",
+    ),
+  mappings: z
+    .array(
+      z.object({
+        prefix: prefixSchema,
+        vikunjaProjectId: z.string().min(1).max(50),
+      }),
+    )
+    .max(20)
+    .optional()
+    .describe(
+      "Prefix -> Vikunja project id. Saved when dryRun is false; reused on later syncs.",
+    ),
+} as const;
+
+export const syncFindingsVikunjaTool = {
+  name: "sync_findings_vikunja",
+  config: {
+    title: "Sync findings from Vikunja",
+    description:
+      "One-way, read-only sync from Vikunja: lists tasks in each prefix's mapped Vikunja project and links those whose title starts with a finding id (PM-F001 ...), recording the task id, URL and done state on the finding. A Spec finding whose task is found moves to Filed. It never writes to Vikunja and never moves a finding to Live. dryRun defaults to true and returns the planned changes; pass dryRun false to apply them. Needs VIKUNJA_API_URL and VIKUNJA_API_TOKEN on the server. Uses no credits.",
+    inputSchema: syncVikunjaInputSchema,
+    outputSchema: z.looseObject({
+      dryRun: z.boolean(),
+      changes: z.array(looseObjectOutputSchema),
+      unmappedPrefixes: z.array(z.string()),
+      ...optionalMetaOutputSchema,
+    }),
+    annotations: {
+      readOnlyHint: false,
+      openWorldHint: true,
+      destructiveHint: false,
+      idempotentHint: true,
+    },
+  },
+  handler: withMcpProjectAuth(
+    async (
+      args: z.infer<z.ZodObject<typeof syncVikunjaInputSchema>>,
+      context,
+    ) => {
+      const result = await FindingsService.syncFindingsVikunja(args.projectId, {
+        dryRun: args.dryRun,
+        mappings: args.mappings,
+        actor: `mcp:${context.auth.userId}`,
+      });
+      const lines = result.changes.map(
+        (c) =>
+          `${c.findingId}: task ${c.vikunjaTaskId}${c.done ? " (done)" : ""}${c.movedToFiled ? ", spec -> filed" : ""}`,
+      );
+      const unmapped = result.unmappedPrefixes.length
+        ? `\nNo Vikunja project mapped for: ${result.unmappedPrefixes.join(", ")}`
+        : "";
+      return mcpResponse({
+        text: `${result.dryRun ? "Planned" : "Applied"} ${result.changes.length} change(s).${lines.length ? "\n" + lines.join("\n") : ""}${unmapped}`,
+        meta: { projectId: args.projectId },
+        structuredContent: result,
+      });
+    },
+  ),
+};

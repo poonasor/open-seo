@@ -11,6 +11,10 @@ declare namespace Cloudflare {
     // Context.dev key: the rendering fallback when Browser Run fails or is
     // blocked, and the only renderer on Docker.
     CONTEXT_API_KEY?: string;
+    // Read-only Vikunja sync for marketing findings (API base URL ending in
+    // /api/v1, and an API token). Secrets only; never in code.
+    VIKUNJA_API_URL?: string;
+    VIKUNJA_API_TOKEN?: string;
     OAUTH_KV: KVNamespace;
 
     // Durable Object backing the SAM in-app agent (see wrangler.jsonc).
