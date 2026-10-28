@@ -149,6 +149,17 @@ async function listFindings(
     .orderBy(asc(findings.prefix), asc(findings.number));
 }
 
+// When each finding entered its current stage: its newest stage event.
+async function listStageEnteredAt(projectId: string) {
+  const events = findingStageEvents;
+  return db
+    .select({ findingId: events.findingId, at: max(events.at) })
+    .from(events)
+    .innerJoin(findings, eq(findings.id, events.findingId))
+    .where(eq(findings.projectId, projectId))
+    .groupBy(events.findingId);
+}
+
 async function getFinding(projectId: string, id: string) {
   const [row] = await db
     .select()
@@ -442,6 +453,7 @@ export const FindingsRepository = {
   findingExists,
   insertFinding,
   listFindings,
+  listStageEnteredAt,
   getFinding,
   listEvents,
   listMeasurements,

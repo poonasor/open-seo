@@ -114,6 +114,14 @@ describe("stage transitions", () => {
     ]);
   });
 
+  it("lists each finding with when it entered its current stage", async () => {
+    await create();
+    vi.setSystemTime("2026-10-30T00:00:00.000Z");
+    await move("brief");
+    const [row] = await service.listFindings("proj_1", {});
+    expect(row?.stageEnteredAt).toBe("2026-10-30T00:00:00.000Z");
+  });
+
   it("allows Finding -> Spec for technical fixes", async () => {
     await create();
     expect((await move("spec")).finding.stage).toBe("spec");
