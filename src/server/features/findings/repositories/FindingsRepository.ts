@@ -1,11 +1,17 @@
-import { and, asc, desc, eq, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNotNull, max, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { runBatch } from "@/db/runBatch";
 import {
+  aiMatches,
+  aiObservations,
+  aiPrompts,
+  aiTrackers,
   findingMeasurements,
   findingPrefixes,
   findings,
   findingStageEvents,
+  rankCheckRuns,
+  rankSnapshots,
 } from "@/db/schema";
 import type { FindingStage } from "@/server/features/findings/findingsDomain";
 
@@ -157,6 +163,144 @@ async function listMeasurements(findingId: string) {
     .orderBy(desc(findingMeasurements.measuredAt));
 }
 
+/** Appends a measurement. The unique index makes a same-window re-run a no-op,
+ *  so a finding imported at live twice in a day keeps its first baseline. */
+async function insertMeasurement(
+  row: Omit<typeof findingMeasurements.$inferInsert, "id" | "measuredAt">,
+) {
+  await db
+    .insert(findingMeasurements)
+    .values({ ...row, id: crypto.randomUUID() })
+    .onConflictDoNothing();
+}
+
+/**
+ * The latest stored snapshot per keyword per device, read-only: a baseline
+ * never starts a rank-tracker run. Keywords are matched case-insensitively
+ * because Search Console reports queries lowercased while tracked keywords
+ * keep their case when `match_case` is set.
+ */
+async function latestRankSnapshotsForKeywords(
+  projectId: string,
+  keywords: string[],
+) {
+  if (keywords.length === 0) return [];
+  const completedRunIds = db
+    .select({ id: rankCheckRuns.id })
+    .from(rankCheckRuns)
+    .where(
+      and(
+        eq(rankCheckRuns.projectId, projectId),
+        eq(rankCheckRuns.status, "completed"),
+      ),
+    );
+  const keyword = sql`lower(${rankSnapshots.keyword})`;
+
+  // The aggregate aliases must not collide with the outer table's column
+  // names: drizzle renders them unqualified in the join, so a collision makes
+  // the column ambiguous.
+  const grouped = db
+    .select({
+      keyword: keyword.as("target_keyword"),
+      device: rankSnapshots.device,
+      checkedAt: max(rankSnapshots.checkedAt).as("target_checked_at"),
+    })
+    .from(rankSnapshots)
+    .where(
+      and(
+        inArray(rankSnapshots.runId, completedRunIds),
+        inArray(
+          keyword,
+          keywords.map((k) => k.toLowerCase()),
+        ),
+      ),
+    )
+    .groupBy(keyword, rankSnapshots.device)
+    .as("grouped");
+
+  return db
+    .select({
+      keyword: sql<string>`lower(${rankSnapshots.keyword})`,
+      device: rankSnapshots.device,
+      position: rankSnapshots.position,
+      checkedAt: rankSnapshots.checkedAt,
+    })
+    .from(rankSnapshots)
+    .innerJoin(
+      grouped,
+      and(
+        eq(keyword, grouped.keyword),
+        eq(rankSnapshots.device, grouped.device),
+        eq(rankSnapshots.checkedAt, grouped.checkedAt),
+      ),
+    )
+    .where(inArray(rankSnapshots.runId, completedRunIds));
+}
+
+/**
+ * The latest collected AI answer per prompt per engine, with whether the
+ * project's own domain was mentioned and cited in it. Read-only: a baseline
+ * never starts an AI-visibility run. Returns every prompt of the project's
+ * tracker (bounded by the tracker's prompt limit); the caller keeps the ones
+ * relevant to its finding.
+ */
+async function latestAiVisibilityForTracker(projectId: string) {
+  const [tracker] = await db
+    .select({ id: aiTrackers.id })
+    .from(aiTrackers)
+    .where(eq(aiTrackers.projectId, projectId))
+    .limit(1);
+  if (!tracker) return [];
+
+  const grouped = db
+    .select({
+      promptId: aiObservations.promptId,
+      engine: aiObservations.engine,
+      // Aliased past the column's own name; see latestRankSnapshotsForKeywords.
+      collectedAt: max(aiObservations.collectedAt).as("target_collected_at"),
+    })
+    .from(aiObservations)
+    .innerJoin(aiPrompts, eq(aiPrompts.id, aiObservations.promptId))
+    .where(
+      and(
+        eq(aiPrompts.trackerId, tracker.id),
+        eq(aiObservations.status, "completed"),
+        isNotNull(aiObservations.collectedAt),
+      ),
+    )
+    .groupBy(aiObservations.promptId, aiObservations.engine)
+    .as("grouped");
+
+  return (
+    db
+      .select({
+        prompt: aiPrompts.text,
+        engine: aiObservations.engine,
+        collectedAt: aiObservations.collectedAt,
+        mentioned: aiMatches.mentioned,
+        cited: aiMatches.cited,
+      })
+      .from(aiObservations)
+      .innerJoin(
+        grouped,
+        and(
+          eq(aiObservations.promptId, grouped.promptId),
+          eq(aiObservations.engine, grouped.engine),
+          eq(aiObservations.collectedAt, grouped.collectedAt),
+        ),
+      )
+      .innerJoin(aiPrompts, eq(aiPrompts.id, aiObservations.promptId))
+      // `own` marks the project's own domain among the answer's matches.
+      .leftJoin(
+        aiMatches,
+        and(
+          eq(aiMatches.observationId, aiObservations.id),
+          eq(aiMatches.own, true),
+        ),
+      )
+  );
+}
+
 async function updateFinding(
   projectId: string,
   id: string,
@@ -229,6 +373,9 @@ export const FindingsRepository = {
   getFinding,
   listEvents,
   listMeasurements,
+  insertMeasurement,
+  latestRankSnapshotsForKeywords,
+  latestAiVisibilityForTracker,
   updateFinding,
   moveStage,
 };

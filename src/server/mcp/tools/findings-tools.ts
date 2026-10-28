@@ -39,6 +39,31 @@ function describeFinding(f: {
   return `${f.id} [${f.stage}] ${f.targetPage ?? "(missing page)"}: ${f.finding}`;
 }
 
+// A measurement's metrics come back as JSON text parsed to `unknown`; narrow
+// just the totals the baseline line quotes.
+const gscTotalsSchema = z.object({
+  searchConsole: z.object({
+    clicks: z.number(),
+    impressions: z.number(),
+    position: z.number(),
+  }),
+});
+
+function baselineLine(baseline: {
+  windowStart: string;
+  windowEnd: string;
+  rulesVersion: string;
+  metrics: unknown;
+}) {
+  const totals = gscTotalsSchema.safeParse(baseline.metrics);
+  const gsc = totals.success ? totals.data.searchConsole : null;
+  return `Baseline ${baseline.windowStart}..${baseline.windowEnd} (rules v${baseline.rulesVersion})${
+    gsc
+      ? `: ${gsc.clicks} clicks, ${gsc.impressions} impressions, position ${gsc.position.toFixed(1)}`
+      : ""
+  }`;
+}
+
 function detailResponse(
   projectId: string,
   result: Awaited<ReturnType<typeof FindingsService.getFinding>>,
@@ -51,6 +76,10 @@ function detailResponse(
         `  ${e.at} ${e.fromStage ?? "-"} -> ${e.toStage} by ${e.actor}${e.note ? ` (${e.note})` : ""}`,
     ),
   ];
+  const baseline = result.measurements.find((m) => m.kind === "baseline");
+  if (baseline) {
+    lines.push(baselineLine(baseline));
+  }
   if (result.finding.remeasureDueAt) {
     lines.push(`Re-measure due ${result.finding.remeasureDueAt}`);
   }
@@ -150,7 +179,7 @@ const createInputSchema = {
     .nullable()
     .optional()
     .describe(
-      "Page the finding is about; null or omitted = a page that does not exist yet.",
+      "Full URL of the page the finding is about, as Search Console reports it (the baseline reads this page); null or omitted = a page that does not exist yet.",
     ),
   evidence: z.string().max(8000).nullable().optional(),
   routeStatus: z.string().max(200).nullable().optional(),
@@ -175,7 +204,7 @@ export const createFindingTool = {
   config: {
     title: "Create finding",
     description:
-      "Records a marketing finding at stage `finding` under a prefix, assigning the next id (PM-F001, PM-F002, ...; numbers are never reused). Uses no credits. To import an existing finding, pass its id (and optionally stage/liveAt); a taken id returns a conflict error.",
+      "Records a marketing finding at stage `finding` under a prefix, assigning the next id (PM-F001, PM-F002, ...; numbers are never reused). Uses no credits. To import an existing finding, pass its id (and optionally stage/liveAt); a taken id returns a conflict error. An import at live/re_measured takes a baseline measurement, like a stage move to live.",
     inputSchema: createInputSchema,
     outputSchema: findingOutputSchema,
     annotations: {
@@ -256,7 +285,7 @@ export const moveFindingStageTool = {
   config: {
     title: "Move finding stage",
     description:
-      "Moves a finding to its next lifecycle stage and records a stage event. Moving to live stamps live_at and sets remeasure_due_at 31 days later (28-day window + 3-day Search Console lag). Uses no credits and takes no baseline.",
+      'Moves a finding to its next lifecycle stage and records a stage event. Moving to live stamps live_at, sets remeasure_due_at 31 days later (28-day window + 3-day Search Console lag), and records a baseline measurement from free reads only: Search Console performance and URL inspection for the target page, plus stored rank-tracker positions and stored AI-visibility answers for its top queries (it never starts a run; missing sources are stored as "data missing"). Uses no credits.',
     inputSchema: moveInputSchema,
     outputSchema: findingOutputSchema,
     annotations: {

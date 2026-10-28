@@ -23,6 +23,11 @@ export const findingVerdictSchema = z.enum([
 // 28-day measurement window + 3-day Search Console lag.
 const REMEASURE_DELAY_DAYS = 31;
 
+/** Versions the rules that turn free reads into a measurement. A re-measure
+ *  only compares against a baseline carrying the same version, so change what
+ *  a measurement collects or computes and this must move. */
+export const RULES_VERSION = "1";
+
 export const prefixSchema = z
   .string()
   .regex(/^[A-Z][A-Z0-9]{1,9}$/, "Prefix is 2-10 uppercase letters or digits");

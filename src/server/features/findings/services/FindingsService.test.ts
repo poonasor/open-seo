@@ -1,6 +1,4 @@
-import { readFileSync } from "node:fs";
-import { createClient, type Client } from "@libsql/client";
-import { drizzle } from "drizzle-orm/libsql";
+import type { Client } from "@libsql/client";
 import {
   afterAll,
   afterEach,
@@ -11,40 +9,22 @@ import {
   it,
   vi,
 } from "vitest";
-import type * as FindingsServiceModule from "./FindingsService";
-
-// Real in-memory SQLite built from the real migration, so id allocation, the
-// unique constraints and the stage events run as generated SQL.
+import {
+  mockConnectedEmptyProviders,
+  resetFindingsDb,
+  startFindingsService,
+  type FindingsService,
+} from "./findings-test-support";
 
 vi.mock("cloudflare:workers", () => ({
   env: { DATABASE_PROVIDER: "d1" },
 }));
 
 let client: Client;
-let FindingsService: typeof FindingsServiceModule.FindingsService;
+let service: FindingsService;
 
 beforeAll(async () => {
-  client = createClient({ url: "file::memory:" });
-  const testDb = drizzle(client);
-  vi.doMock("@/db", () => ({ db: testDb }));
-  vi.doMock("@/db/runBatch", () => ({
-    runBatch: async (build: (tx: unknown) => readonly Promise<unknown>[]) => {
-      const results: unknown[] = [];
-      for (const statement of build(testDb)) results.push(await statement);
-      return results;
-    },
-  }));
-  await client.executeMultiple(
-    [
-      `CREATE TABLE projects (id text PRIMARY KEY);`,
-      `INSERT INTO projects (id) VALUES ('proj_1'), ('proj_2');`,
-      ...readFileSync(
-        "drizzle/sqlite/0063_magenta_blacklash.sql",
-        "utf8",
-      ).split("--> statement-breakpoint"),
-    ].join("\n"),
-  );
-  ({ FindingsService } = await import("./FindingsService"));
+  ({ client, FindingsService: service } = await startFindingsService());
 });
 
 afterAll(() => {
@@ -54,9 +34,8 @@ afterAll(() => {
 beforeEach(async () => {
   vi.useFakeTimers();
   vi.setSystemTime("2026-10-27T00:00:00.000Z");
-  await client.executeMultiple(
-    "DELETE FROM finding_stage_events; DELETE FROM findings; DELETE FROM finding_prefixes;",
-  );
+  await resetFindingsDb(client);
+  mockConnectedEmptyProviders();
 });
 
 afterEach(() => {
@@ -64,7 +43,7 @@ afterEach(() => {
 });
 
 const create = (overrides: Record<string, unknown> = {}) =>
-  FindingsService.createFinding("proj_1", {
+  service.createFinding("proj_1", {
     prefix: "PM",
     site: "example.com",
     finding: "Pricing page has no FAQ",
@@ -73,10 +52,10 @@ const create = (overrides: Record<string, unknown> = {}) =>
   });
 
 const move = (
-  toStage: Parameters<typeof FindingsService.moveStage>[2]["toStage"],
+  toStage: Parameters<typeof service.moveStage>[2]["toStage"],
   extra: Record<string, unknown> = {},
 ) =>
-  FindingsService.moveStage("proj_1", "PM-F001", {
+  service.moveStage("proj_1", "PM-F001", {
     toStage,
     actor: "tester",
     ...extra,
@@ -104,7 +83,7 @@ describe("id allocation", () => {
   it("keeps a prefix owned by one project", async () => {
     await create();
     await expect(
-      FindingsService.createFinding("proj_2", {
+      service.createFinding("proj_2", {
         prefix: "PM",
         site: "other.com",
         finding: "x",
@@ -120,10 +99,7 @@ describe("stage transitions", () => {
     for (const stage of ["brief", "draft", "spec", "filed", "live"] as const) {
       await move(stage);
     }
-    const { finding, events } = await FindingsService.getFinding(
-      "proj_1",
-      "PM-F001",
-    );
+    const { finding, events } = await service.getFinding("proj_1", "PM-F001");
     expect(finding.stage).toBe("live");
     expect(finding.liveAt).toBe("2026-10-27T00:00:00.000Z");
     // 28-day window + 3-day Search Console lag.
@@ -156,10 +132,7 @@ describe("stage transitions", () => {
       reason: { code: "CONFLICT" },
     });
 
-    const { finding, events } = await FindingsService.getFinding(
-      "proj_1",
-      "PM-F001",
-    );
+    const { finding, events } = await service.getFinding("proj_1", "PM-F001");
     expect(finding.stage).toBe("brief");
     expect(events.map((e) => e.toStage)).toEqual(["finding", "brief"]);
   });

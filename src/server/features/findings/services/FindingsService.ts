@@ -7,6 +7,7 @@ import {
   remeasureDueAt,
   type FindingStage,
 } from "@/server/features/findings/findingsDomain";
+import { recordBaseline } from "@/server/features/findings/services/baselineSnapshot";
 import type { FindingPatch } from "@/server/features/findings/repositories/FindingsRepository";
 import { AppError } from "@/server/lib/errors";
 
@@ -95,6 +96,7 @@ async function createFinding(projectId: string, input: CreateFindingInput) {
   const liveAt = reachedLive
     ? (input.liveAt ?? new Date().toISOString())
     : null;
+  const targetPage = input.targetPage ?? null;
   await FindingsRepository.insertFinding(
     {
       id,
@@ -104,7 +106,7 @@ async function createFinding(projectId: string, input: CreateFindingInput) {
       site: prefixRow.site,
       stage,
       finding: input.finding,
-      targetPage: input.targetPage ?? null,
+      targetPage,
       evidence: input.evidence ?? null,
       routeStatus: input.routeStatus ?? null,
       liveAt,
@@ -112,6 +114,7 @@ async function createFinding(projectId: string, input: CreateFindingInput) {
     },
     { actor: input.actor, note: input.id ? "Imported" : null },
   );
+  if (liveAt) await recordBaseline(projectId, { id, targetPage });
   return getFinding(projectId, id);
 }
 
@@ -218,6 +221,11 @@ async function moveStage(
       `${id} changed stage while it was being moved; reload it and try again.`,
     );
   }
+  // The baseline only exists for a move that happened, so it is collected
+  // after the guarded update. Sources that are missing are recorded as
+  // "data missing" inside it rather than failing the move.
+  if (liveAt)
+    await recordBaseline(projectId, { id, targetPage: current.targetPage });
   return getFinding(projectId, id);
 }
 
