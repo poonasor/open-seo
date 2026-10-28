@@ -18,3 +18,15 @@ export const savedReportSchema = z.looseObject({ reportId: z.string() });
 export const templatesSchema = z.looseObject({ templates: z.array(idSchema) });
 export const savedTemplateSchema = z.looseObject({ templateId: z.string() });
 export const deletedCountSchema = z.looseObject({ deletedCount: z.number() });
+export const findingDetailSchema = z.looseObject({
+  finding: z.looseObject({
+    id: z.string(),
+    stage: z.string(),
+    finding: z.string(),
+  }),
+});
+export const findingsListSchema = z.looseObject({
+  findings: z.array(
+    z.looseObject({ id: z.string(), stage: z.string(), finding: z.string() }),
+  ),
+});

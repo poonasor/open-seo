@@ -23,6 +23,7 @@ import {
 } from "./mcp";
 import {
   createdProjectSchema,
+  findingDetailSchema,
   savedKeywordsSchema,
   savedReportSchema,
   savedTemplateSchema,
@@ -37,6 +38,9 @@ export const KEY_A = "Isolation key A";
 export const KEY_A_IN_B = "Isolation key A in B";
 // What A tries to write into B's workspace; must never land anywhere.
 export const INTRUDER = `intruder-a-${RUN}`;
+// Finding prefixes are 2-10 uppercase letters or digits and owned by one
+// project, so B's is run-unique.
+export const FINDING_PREFIX = `T${RUN.toUpperCase()}`;
 
 export type Tenant = Account & {
   orgId: string;
@@ -50,6 +54,7 @@ export type SeededData = {
   marker: string;
   reportId: string;
   templateId: string;
+  findingId: string;
   keywordIds: string[];
   /** Every B identifier that must never show up in A's responses. */
   secrets: string[];
@@ -127,7 +132,10 @@ export async function setupTenant(
   };
 }
 
-/** B writes its marker into context, a saved keyword, a report and a template. */
+/**
+ * B writes its marker into context, a saved keyword, a report, a template and
+ * a finding.
+ */
 export async function seedTenantB(
   anon: APIRequestContext,
   b: Tenant,
@@ -191,8 +199,23 @@ export async function seedTenantB(
     savedTemplateSchema,
     "seed report template",
   );
+  const finding = structured(
+    await seed({
+      name: "create_finding",
+      arguments: {
+        projectId,
+        prefix: FINDING_PREFIX,
+        site: `b-${RUN}.example.com`,
+        finding: `Finding carrying ${marker}`,
+        evidence: `Evidence carrying ${marker}`,
+      },
+    }),
+    findingDetailSchema,
+    "seed finding",
+  );
   return {
     marker,
+    findingId: finding.finding.id,
     reportId: report.reportId,
     templateId: template.templateId,
     keywordIds,
@@ -201,6 +224,7 @@ export async function seedTenantB(
       b.projectId,
       report.reportId,
       template.templateId,
+      finding.finding.id,
       ...keywordIds,
       b.orgId,
       b.email,
