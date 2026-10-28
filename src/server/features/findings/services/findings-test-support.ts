@@ -79,10 +79,12 @@ export async function startFindingsService(): Promise<{
       `CREATE TABLE ai_matches (
         id text PRIMARY KEY, observation_id text NOT NULL, domain text NOT NULL,
         own integer NOT NULL, mentioned integer NOT NULL, cited integer NOT NULL);`,
-      ...readFileSync(
+      ...[
         "drizzle/sqlite/0064_mean_franklin_storm.sql",
-        "utf8",
-      ).split("--> statement-breakpoint"),
+        "drizzle/sqlite/0065_flat_norrin_radd.sql",
+      ].flatMap((file) =>
+        readFileSync(file, "utf8").split("--> statement-breakpoint"),
+      ),
     ].join("\n"),
   );
   const { FindingsService } = await import("./FindingsService");

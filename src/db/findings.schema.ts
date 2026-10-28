@@ -26,6 +26,9 @@ export const findingPrefixes = sqliteTable(
     prefix: text("prefix").notNull(),
     site: text("site").notNull(),
     lastNumber: integer("last_number").notNull().default(0),
+    // The Vikunja project whose tasks mirror this prefix's findings (read-only
+    // sync); null = not mapped.
+    vikunjaProjectId: text("vikunja_project_id"),
     createdAt: text("created_at")
       .notNull()
       .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ','now'))`),
@@ -69,6 +72,8 @@ export const findings = sqliteTable(
     routeStatus: text("route_status"),
     vikunjaTaskId: text("vikunja_task_id"),
     vikunjaTaskUrl: text("vikunja_task_url"),
+    // The linked Vikunja task's done flag; null until a task is linked.
+    vikunjaDone: integer("vikunja_done", { mode: "boolean" }),
     liveAt: text("live_at"),
     remeasureDueAt: text("remeasure_due_at"),
     verdict: text("verdict", {
