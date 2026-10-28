@@ -8,12 +8,20 @@ import {
   type ToolCall,
 } from "./mcp";
 import {
+  findingDetailSchema,
+  findingsListSchema,
   reportSchema,
   reportsSchema,
   savedKeywordsSchema,
   templatesSchema,
 } from "./schemas";
-import { INTRUDER, reportHtml, type SeededData, type Tenant } from "./tenants";
+import {
+  FINDING_PREFIX,
+  INTRUDER,
+  reportHtml,
+  type SeededData,
+  type Tenant,
+} from "./tenants";
 
 /**
  * The read/change/delete/export surface, all pointed at B's project. The
@@ -74,6 +82,48 @@ export function foreignProjectCalls(b: Tenant, seeded: SeededData): ToolCall[] {
     },
     { name: "export_ai_visibility_data", arguments: { projectId } },
     { name: "get_audit_status", arguments: { projectId } },
+    ...foreignFindingCalls(projectId, seeded.findingId),
+    // A fresh number under B's prefix: the project gate comes first.
+    {
+      name: "create_finding",
+      arguments: { projectId, prefix: FINDING_PREFIX, finding: INTRUDER },
+    },
+  ];
+}
+
+/**
+ * Every findings tool, pointed at one project and one finding id (list and
+ * sync take no id; they are included so each tool is refused as a whole).
+ */
+function foreignFindingCalls(projectId: string, id: string): ToolCall[] {
+  return [
+    { name: "list_findings", arguments: { projectId } },
+    { name: "get_finding", arguments: { projectId, id } },
+    {
+      name: "update_finding",
+      arguments: {
+        projectId,
+        id,
+        finding: INTRUDER,
+        vikunjaTaskId: INTRUDER,
+        verdict: "worse",
+      },
+    },
+    {
+      name: "move_finding_stage",
+      arguments: { projectId, id, toStage: "live", import: true },
+    },
+    { name: "remeasure_finding", arguments: { projectId, id } },
+    // Mapping B's prefix is refused: a prefix is registered to one project,
+    // and the check runs before anything is sent to Vikunja.
+    {
+      name: "sync_findings_vikunja",
+      arguments: {
+        projectId,
+        dryRun: false,
+        mappings: [{ prefix: FINDING_PREFIX, vikunjaProjectId: "1" }],
+      },
+    },
   ];
 }
 
@@ -117,6 +167,20 @@ export function foreignResourceCalls(
       },
     },
     { name: "get_audit_status", arguments: { projectId, auditId: reportId } },
+    // list_findings takes no id; it is checked on its own in the spec.
+    ...foreignFindingCalls(projectId, seeded.findingId).slice(1),
+    // An explicit-id create cannot take over B's id: the prefix belongs to
+    // B's project, so this is a conflict, never an overwrite.
+    {
+      name: "create_finding",
+      arguments: {
+        projectId,
+        id: seeded.findingId,
+        site: INTRUDER,
+        finding: INTRUDER,
+        stage: "live",
+      },
+    },
   ];
 }
 
@@ -214,6 +278,33 @@ export async function checkTenantBUnchanged(
     expectation: "report still private",
     ok: report.report.shareUrl === null,
     detail: `shareUrl=${String(report.report.shareUrl)}`,
+  });
+
+  const findings = structured(
+    await read({ name: "list_findings", arguments: { projectId } }),
+    findingsListSchema,
+    "B lists findings",
+  );
+  const finding = structured(
+    await read({
+      name: "get_finding",
+      arguments: { projectId, id: seeded.findingId },
+    }),
+    findingDetailSchema,
+    "B reads its finding",
+  );
+  check({
+    chapter,
+    credential,
+    tool: "list_findings / get_finding",
+    expectation: "only the seeded finding, still at stage finding, text intact",
+    ok:
+      findings.findings.length === 1 &&
+      findings.findings[0].id === seeded.findingId &&
+      finding.finding.stage === "finding" &&
+      finding.finding.finding.includes(seeded.marker) &&
+      !JSON.stringify(finding).includes(INTRUDER),
+    detail: findings.findings.map((row) => `${row.id}@${row.stage}`).join(","),
   });
 
   const templates = structured(

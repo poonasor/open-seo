@@ -23,6 +23,7 @@ import {
 } from "./mcp-isolation/mcp";
 import {
   deletedCountSchema,
+  findingsListSchema,
   projectsSchema,
   whoamiSchema,
 } from "./mcp-isolation/schemas";
@@ -227,6 +228,29 @@ test("3. cross-tenant matrix: A cannot read, change, delete or export B's data",
       });
     });
   }
+
+  await test.step("as A: the explicit-id create and the moves left A with no findings", async () => {
+    const call: ToolCall = {
+      name: "list_findings",
+      arguments: { projectId: a.projectId },
+    };
+    for (const credential of [a.oauth, a.apiKey]) {
+      const result = await callTool(anon, credential, call);
+      const listed = findingsListSchema.safeParse(result.structuredContent);
+      check({
+        chapter,
+        credential: credential.label,
+        tool: "list_findings (A project)",
+        expectation: "empty: nothing of B's, nothing A's attempts created",
+        ok:
+          result.isError === false &&
+          listed.success &&
+          listed.data.findings.length === 0 &&
+          leaked(result, call, seeded).length === 0,
+        detail: describeResult(result),
+      });
+    }
+  });
 
   await test.step("as B: nothing changed", () =>
     checkTenantBUnchanged(anon, b, seeded, chapter));
