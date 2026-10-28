@@ -7,6 +7,8 @@ import {
   remeasureDueAt,
   type FindingStage,
 } from "@/server/features/findings/findingsDomain";
+import { recordRemeasure } from "@/server/features/findings/services/remeasure";
+import { remeasureWindows } from "@/server/features/findings/remeasureRules";
 import { recordBaseline } from "@/server/features/findings/services/baselineSnapshot";
 import type { FindingPatch } from "@/server/features/findings/repositories/FindingsRepository";
 import { AppError } from "@/server/lib/errors";
@@ -229,7 +231,37 @@ async function moveStage(
   return getFinding(projectId, id);
 }
 
+/** Manual re-measure of one finding. Refuses until the after window has
+ *  closed (28 days plus the Search Console lag); a finding that is already
+ *  re-measured is returned unchanged. */
+async function remeasureFinding(projectId: string, id: string, actor: string) {
+  const current = await requireFinding(projectId, id);
+  if (current.stage === "re_measured") return getFinding(projectId, id);
+  if (current.stage !== "live" || !current.liveAt) {
+    throw new AppError(
+      "VALIDATION_ERROR",
+      `${id} is ${current.stage}; only live findings can be re-measured.`,
+    );
+  }
+  const windows = remeasureWindows(current.liveAt, new Date());
+  if (!windows.complete) {
+    throw new AppError(
+      "VALIDATION_ERROR",
+      `${id} cannot be re-measured yet: the after window (${windows.after.startDate} to ${windows.after.endDate}) is not complete until ${windows.readyOn}.`,
+    );
+  }
+  const moved = await recordRemeasure(current, actor);
+  if (!moved) {
+    throw new AppError(
+      "CONFLICT",
+      `${id} changed stage while it was being re-measured; reload it.`,
+    );
+  }
+  return getFinding(projectId, id);
+}
+
 export const FindingsService = {
+  remeasureFinding,
   createFinding,
   getFinding,
   listFindings,

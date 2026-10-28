@@ -10,7 +10,7 @@ import { FindingsRepository } from "@/server/features/findings/repositories/Find
 // or calls a paid API, and a source that is absent records "data missing"
 // rather than blocking the stage move.
 
-const DATA_MISSING = "data missing";
+export const DATA_MISSING = "data missing";
 
 // Search Console rows come back click-sorted; keep the measurement row small.
 const TOP_QUERIES = 10;
@@ -74,6 +74,59 @@ type RankSnapshot = Awaited<
   ReturnType<typeof FindingsRepository.latestRankSnapshotsForKeywords>
 >[number];
 
+type DateWindow = { startDate: string; endDate: string };
+
+/** Search Console performance for one page over one window. Throws on a
+ *  provider failure; the baseline records that as "data missing", the
+ *  re-measure decides per error. */
+export async function queryPagePerformance(
+  projectId: string,
+  targetPage: string,
+  window: DateWindow | "last_28_days",
+): Promise<
+  NonNullable<Exclude<BaselineMetrics["searchConsole"], "data missing">>
+> {
+  const { rows } = await GscService.getPerformance({
+    projectId,
+    dimensions: ["query"],
+    ...(window === "last_28_days"
+      ? { dateRange: window }
+      : { startDate: window.startDate, endDate: window.endDate }),
+    filters: [
+      { dimension: "page", operator: "equals", expression: targetPage },
+    ],
+    rowLimit: 1000,
+  });
+  const queries: BaselineTopQuery[] = rows.flatMap((row) => {
+    const query = row.keys?.[0];
+    // Anonymous queries have no key and cannot be tracked or re-measured.
+    if (!query) return [];
+    return [
+      {
+        query,
+        clicks: row.clicks,
+        impressions: row.impressions,
+        ctr: row.ctr,
+        position: row.position,
+      },
+    ];
+  });
+  const impressions = queries.reduce((sum, q) => sum + q.impressions, 0);
+  const clicks = queries.reduce((sum, q) => sum + q.clicks, 0);
+  return {
+    clicks,
+    impressions,
+    ctr: impressions > 0 ? clicks / impressions : 0,
+    // Impression-weighted, because a query seen twice matters twice.
+    position:
+      impressions > 0
+        ? queries.reduce((sum, q) => sum + q.position * q.impressions, 0) /
+          impressions
+        : 0,
+    topQueries: queries.slice(0, TOP_QUERIES),
+  };
+}
+
 /** The target keywords of a finding are the queries its page currently shows
  *  for — the only keyword set the free reads can produce on their own. */
 async function searchConsoleSection(
@@ -82,49 +135,13 @@ async function searchConsoleSection(
 ): Promise<BaselineMetrics["searchConsole"]> {
   if (!targetPage) return DATA_MISSING;
   try {
-    const { rows } = await GscService.getPerformance({
-      projectId,
-      dimensions: ["query"],
-      dateRange: "last_28_days",
-      filters: [
-        { dimension: "page", operator: "equals", expression: targetPage },
-      ],
-      rowLimit: 1000,
-    });
-    const queries: BaselineTopQuery[] = rows.flatMap((row) => {
-      const query = row.keys?.[0];
-      // Anonymous queries have no key and cannot be tracked or re-measured.
-      if (!query) return [];
-      return [
-        {
-          query,
-          clicks: row.clicks,
-          impressions: row.impressions,
-          ctr: row.ctr,
-          position: row.position,
-        },
-      ];
-    });
-    const impressions = queries.reduce((sum, q) => sum + q.impressions, 0);
-    const clicks = queries.reduce((sum, q) => sum + q.clicks, 0);
-    return {
-      clicks,
-      impressions,
-      ctr: impressions > 0 ? clicks / impressions : 0,
-      // Impression-weighted, because a query seen twice matters twice.
-      position:
-        impressions > 0
-          ? queries.reduce((sum, q) => sum + q.position * q.impressions, 0) /
-            impressions
-          : 0,
-      topQueries: queries.slice(0, TOP_QUERIES),
-    };
+    return await queryPagePerformance(projectId, targetPage, "last_28_days");
   } catch (error) {
     return missing("Search Console performance", error);
   }
 }
 
-async function urlInspectionSection(
+export async function urlInspectionSection(
   projectId: string,
   targetPage: string | null,
 ): Promise<BaselineMetrics["urlInspection"]> {
@@ -146,7 +163,7 @@ async function urlInspectionSection(
   }
 }
 
-async function rankTrackingSection(
+export async function rankTrackingSection(
   projectId: string,
   topQueries: BaselineTopQuery[],
 ): Promise<BaselineMetrics["rankTracking"]> {
@@ -194,7 +211,7 @@ async function rankTrackingSection(
   }
 }
 
-async function aiVisibilitySection(
+export async function aiVisibilitySection(
   projectId: string,
   topQueries: BaselineTopQuery[],
 ): Promise<BaselineMetrics["aiVisibility"]> {

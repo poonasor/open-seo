@@ -307,3 +307,38 @@ export const moveFindingStageTool = {
     },
   ),
 };
+
+const remeasureInputSchema = {
+  projectId: projectIdSchema,
+  id: findingIdSchema,
+} as const;
+
+export const remeasureFindingTool = {
+  name: "remeasure_finding",
+  config: {
+    title: "Re-measure finding",
+    description:
+      "Runs the re-measure for one live finding now instead of waiting for the scheduled job: compares the 28 days before and after it went live from free reads only (Search Console, URL inspection, stored rank-tracker and AI-visibility results), stores a remeasure measurement and a verdict (moved, flat, worse, data_too_thin), and moves the finding to re_measured. Refuses until the after window has closed (28 days after live plus a 3-day Search Console lag). A finding that is already re-measured is returned unchanged. Uses no credits.",
+    inputSchema: remeasureInputSchema,
+    outputSchema: findingOutputSchema,
+    annotations: {
+      readOnlyHint: false,
+      openWorldHint: false,
+      destructiveHint: false,
+      idempotentHint: true,
+    },
+  },
+  handler: withMcpProjectAuth(
+    async (
+      args: z.infer<z.ZodObject<typeof remeasureInputSchema>>,
+      context,
+    ) => {
+      const result = await FindingsService.remeasureFinding(
+        args.projectId,
+        args.id,
+        `mcp:${context.auth.userId}`,
+      );
+      return detailResponse(args.projectId, result, "Re-measured ");
+    },
+  ),
+};

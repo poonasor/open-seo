@@ -1,4 +1,15 @@
-import { and, asc, desc, eq, inArray, isNotNull, max, sql } from "drizzle-orm";
+import {
+  and,
+  asc,
+  desc,
+  eq,
+  inArray,
+  isNotNull,
+  lte,
+  max,
+  notExists,
+  sql,
+} from "drizzle-orm";
 import { db } from "@/db";
 import { runBatch } from "@/db/runBatch";
 import {
@@ -301,6 +312,39 @@ async function latestAiVisibilityForTracker(projectId: string) {
   );
 }
 
+/** Live findings whose re-measure is due and that have no re-measure for this
+ *  rules version yet: the cron's work queue, oldest first. Not project-scoped:
+ *  the cron serves every project, and each row carries its own projectId. */
+async function listDueForRemeasure(
+  now: string,
+  rulesVersion: string,
+  limit: number,
+) {
+  return db
+    .select()
+    .from(findings)
+    .where(
+      and(
+        eq(findings.stage, "live"),
+        lte(findings.remeasureDueAt, now),
+        notExists(
+          db
+            .select({ id: findingMeasurements.id })
+            .from(findingMeasurements)
+            .where(
+              and(
+                eq(findingMeasurements.findingId, findings.id),
+                eq(findingMeasurements.kind, "remeasure"),
+                eq(findingMeasurements.rulesVersion, rulesVersion),
+              ),
+            ),
+        ),
+      ),
+    )
+    .orderBy(asc(findings.remeasureDueAt))
+    .limit(limit);
+}
+
 async function updateFinding(
   projectId: string,
   id: string,
@@ -320,12 +364,26 @@ async function moveStage(params: {
   actor: string;
   note: string | null;
   live?: { liveAt: string; remeasureDueAt: string };
+  // The re-measure move: the verdict lands on the finding and the measurement
+  // is stored in the same atomic batch as the stage change.
+  remeasure?: {
+    verdict: NonNullable<FindingInsert["verdict"]>;
+    measurement: Omit<
+      typeof findingMeasurements.$inferInsert,
+      "id" | "measuredAt"
+    >;
+  };
 }) {
   const at = new Date().toISOString();
   const [moved] = await runBatch((tx) => [
     tx
       .update(findings)
-      .set({ stage: params.to, updatedAt: at, ...params.live })
+      .set({
+        stage: params.to,
+        updatedAt: at,
+        ...params.live,
+        ...(params.remeasure && { verdict: params.remeasure.verdict }),
+      })
       .where(
         and(
           eq(findings.projectId, params.projectId),
@@ -358,6 +416,20 @@ async function moveStage(params: {
           ),
         ),
     ),
+    // Insert-or-ignore, so a re-run for the same window adds nothing. Last,
+    // so the guarded update stays the first result.
+    ...(params.remeasure
+      ? [
+          tx
+            .insert(findingMeasurements)
+            .values({
+              ...params.remeasure.measurement,
+              id: crypto.randomUUID(),
+              measuredAt: at,
+            })
+            .onConflictDoNothing(),
+        ]
+      : []),
   ]);
   return Array.isArray(moved) && moved.length > 0;
 }
@@ -376,6 +448,7 @@ export const FindingsRepository = {
   insertMeasurement,
   latestRankSnapshotsForKeywords,
   latestAiVisibilityForTracker,
+  listDueForRemeasure,
   updateFinding,
   moveStage,
 };
