@@ -1,7 +1,7 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "07bcdd7b-d032-4089-89d3-67c1de4c746e",
+  "id": "032f84d2-c5e1-41c8-9c17-248b78c6a66e",
   "prevId": "633a88f7-a404-403e-9507-e5c69314be6c",
   "tables": {
     "backlink_snapshots": {
@@ -5651,8 +5651,8 @@
       "uniqueConstraints": {},
       "checkConstraints": {}
     },
-    "finding_measurements": {
-      "name": "finding_measurements",
+    "web_analytics_events": {
+      "name": "web_analytics_events",
       "columns": {
         "id": {
           "name": "id",
@@ -5661,97 +5661,88 @@
           "notNull": true,
           "autoincrement": false
         },
-        "finding_id": {
-          "name": "finding_id",
+        "site_id": {
+          "name": "site_id",
           "type": "text",
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false
         },
-        "kind": {
-          "name": "kind",
+        "session_id": {
+          "name": "session_id",
           "type": "text",
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false
         },
-        "rules_version": {
-          "name": "rules_version",
+        "visitor_id": {
+          "name": "visitor_id",
           "type": "text",
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false
         },
-        "window_start": {
-          "name": "window_start",
+        "ts": {
+          "name": "ts",
           "type": "text",
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false
         },
-        "window_end": {
-          "name": "window_end",
+        "type": {
+          "name": "type",
           "type": "text",
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false
         },
-        "metrics": {
-          "name": "metrics",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "deltas": {
-          "name": "deltas",
+        "name": {
+          "name": "name",
           "type": "text",
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false
         },
-        "verdict": {
-          "name": "verdict",
+        "path": {
+          "name": "path",
           "type": "text",
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false
         },
-        "sources": {
-          "name": "sources",
+        "props": {
+          "name": "props",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
+          "notNull": false,
           "autoincrement": false
-        },
-        "measured_at": {
-          "name": "measured_at",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": "(strftime('%Y-%m-%dT%H:%M:%fZ','now'))"
         }
       },
       "indexes": {
-        "finding_measurements_unique_idx": {
-          "name": "finding_measurements_unique_idx",
+        "web_analytics_events_site_ts_idx": {
+          "name": "web_analytics_events_site_ts_idx",
           "columns": [
-            "finding_id",
-            "kind",
-            "rules_version",
-            "window_end"
+            "site_id",
+            "ts"
           ],
-          "isUnique": true
+          "isUnique": false
+        },
+        "web_analytics_events_site_session_idx": {
+          "name": "web_analytics_events_site_session_idx",
+          "columns": [
+            "site_id",
+            "session_id"
+          ],
+          "isUnique": false
         }
       },
       "foreignKeys": {
-        "finding_measurements_finding_id_findings_id_fk": {
-          "name": "finding_measurements_finding_id_findings_id_fk",
-          "tableFrom": "finding_measurements",
-          "tableTo": "findings",
+        "web_analytics_events_site_id_web_analytics_sites_id_fk": {
+          "name": "web_analytics_events_site_id_web_analytics_sites_id_fk",
+          "tableFrom": "web_analytics_events",
+          "tableTo": "web_analytics_sites",
           "columnsFrom": [
-            "finding_id"
+            "site_id"
           ],
           "columnsTo": [
             "id"
@@ -5764,154 +5755,227 @@
       "uniqueConstraints": {},
       "checkConstraints": {}
     },
-    "finding_prefixes": {
-      "name": "finding_prefixes",
+    "web_analytics_sessions": {
+      "name": "web_analytics_sessions",
       "columns": {
+        "site_id": {
+          "name": "site_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
         "id": {
           "name": "id",
           "type": "text",
-          "primaryKey": true,
+          "primaryKey": false,
           "notNull": true,
           "autoincrement": false
         },
-        "project_id": {
-          "name": "project_id",
+        "visitor_id": {
+          "name": "visitor_id",
           "type": "text",
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false
         },
-        "prefix": {
-          "name": "prefix",
+        "started_at": {
+          "name": "started_at",
           "type": "text",
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false
         },
-        "site": {
-          "name": "site",
+        "last_seen_at": {
+          "name": "last_seen_at",
           "type": "text",
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false
         },
-        "last_number": {
-          "name": "last_number",
+        "duration_ms": {
+          "name": "duration_ms",
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false,
           "default": 0
         },
-        "created_at": {
-          "name": "created_at",
-          "type": "text",
+        "pageviews": {
+          "name": "pageviews",
+          "type": "integer",
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false,
-          "default": "(strftime('%Y-%m-%dT%H:%M:%fZ','now'))"
-        }
-      },
-      "indexes": {
-        "finding_prefixes_project_prefix_idx": {
-          "name": "finding_prefixes_project_prefix_idx",
-          "columns": [
-            "project_id",
-            "prefix"
-          ],
-          "isUnique": true
-        }
-      },
-      "foreignKeys": {
-        "finding_prefixes_project_id_projects_id_fk": {
-          "name": "finding_prefixes_project_id_projects_id_fk",
-          "tableFrom": "finding_prefixes",
-          "tableTo": "projects",
-          "columnsFrom": [
-            "project_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "checkConstraints": {}
-    },
-    "finding_stage_events": {
-      "name": "finding_stage_events",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "text",
-          "primaryKey": true,
-          "notNull": true,
-          "autoincrement": false
+          "default": 0
         },
-        "finding_id": {
-          "name": "finding_id",
-          "type": "text",
+        "goals": {
+          "name": "goals",
+          "type": "integer",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false
+          "autoincrement": false,
+          "default": 0
         },
-        "from_stage": {
-          "name": "from_stage",
+        "hostname": {
+          "name": "hostname",
           "type": "text",
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false
         },
-        "to_stage": {
-          "name": "to_stage",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "actor": {
-          "name": "actor",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "note": {
-          "name": "note",
+        "entry_page": {
+          "name": "entry_page",
           "type": "text",
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false
         },
-        "at": {
-          "name": "at",
+        "exit_page": {
+          "name": "exit_page",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "referrer": {
+          "name": "referrer",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "referrer_domain": {
+          "name": "referrer_domain",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "source": {
+          "name": "source",
           "type": "text",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
-          "default": "(strftime('%Y-%m-%dT%H:%M:%fZ','now'))"
+          "autoincrement": false
+        },
+        "channel": {
+          "name": "channel",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "utm_source": {
+          "name": "utm_source",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "utm_medium": {
+          "name": "utm_medium",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "utm_campaign": {
+          "name": "utm_campaign",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "utm_term": {
+          "name": "utm_term",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "utm_content": {
+          "name": "utm_content",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "ref": {
+          "name": "ref",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "country": {
+          "name": "country",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "region": {
+          "name": "region",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "city": {
+          "name": "city",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "browser": {
+          "name": "browser",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "os": {
+          "name": "os",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "device": {
+          "name": "device",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
         }
       },
       "indexes": {
-        "finding_stage_events_finding_idx": {
-          "name": "finding_stage_events_finding_idx",
+        "web_analytics_sessions_site_started_idx": {
+          "name": "web_analytics_sessions_site_started_idx",
           "columns": [
-            "finding_id",
-            "at"
+            "site_id",
+            "started_at"
+          ],
+          "isUnique": false
+        },
+        "web_analytics_sessions_site_visitor_idx": {
+          "name": "web_analytics_sessions_site_visitor_idx",
+          "columns": [
+            "site_id",
+            "visitor_id"
           ],
           "isUnique": false
         }
       },
       "foreignKeys": {
-        "finding_stage_events_finding_id_findings_id_fk": {
-          "name": "finding_stage_events_finding_id_findings_id_fk",
-          "tableFrom": "finding_stage_events",
-          "tableTo": "findings",
+        "web_analytics_sessions_site_id_web_analytics_sites_id_fk": {
+          "name": "web_analytics_sessions_site_id_web_analytics_sites_id_fk",
+          "tableFrom": "web_analytics_sessions",
+          "tableTo": "web_analytics_sites",
           "columnsFrom": [
-            "finding_id"
+            "site_id"
           ],
           "columnsTo": [
             "id"
@@ -5924,8 +5988,8 @@
       "uniqueConstraints": {},
       "checkConstraints": {}
     },
-    "findings": {
-      "name": "findings",
+    "web_analytics_sites": {
+      "name": "web_analytics_sites",
       "columns": {
         "id": {
           "name": "id",
@@ -5941,96 +6005,11 @@
           "notNull": true,
           "autoincrement": false
         },
-        "prefix": {
-          "name": "prefix",
+        "organization_id": {
+          "name": "organization_id",
           "type": "text",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false
-        },
-        "number": {
-          "name": "number",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "site": {
-          "name": "site",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "stage": {
-          "name": "stage",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": "'finding'"
-        },
-        "finding": {
-          "name": "finding",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "target_page": {
-          "name": "target_page",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "evidence": {
-          "name": "evidence",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "route_status": {
-          "name": "route_status",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "vikunja_task_id": {
-          "name": "vikunja_task_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "vikunja_task_url": {
-          "name": "vikunja_task_url",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "live_at": {
-          "name": "live_at",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "remeasure_due_at": {
-          "name": "remeasure_due_at",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "verdict": {
-          "name": "verdict",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
           "autoincrement": false
         },
         "created_at": {
@@ -6038,43 +6017,45 @@
           "type": "text",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
-          "default": "(strftime('%Y-%m-%dT%H:%M:%fZ','now'))"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": "(strftime('%Y-%m-%dT%H:%M:%fZ','now'))"
+          "autoincrement": false
         }
       },
       "indexes": {
-        "findings_prefix_number_idx": {
-          "name": "findings_prefix_number_idx",
+        "web_analytics_sites_project_idx": {
+          "name": "web_analytics_sites_project_idx",
           "columns": [
-            "prefix",
-            "number"
+            "project_id"
           ],
           "isUnique": true
         },
-        "findings_project_stage_idx": {
-          "name": "findings_project_stage_idx",
+        "web_analytics_sites_organization_idx": {
+          "name": "web_analytics_sites_organization_idx",
           "columns": [
-            "project_id",
-            "stage"
+            "organization_id"
           ],
           "isUnique": false
         }
       },
       "foreignKeys": {
-        "findings_project_id_projects_id_fk": {
-          "name": "findings_project_id_projects_id_fk",
-          "tableFrom": "findings",
+        "web_analytics_sites_project_id_projects_id_fk": {
+          "name": "web_analytics_sites_project_id_projects_id_fk",
+          "tableFrom": "web_analytics_sites",
           "tableTo": "projects",
           "columnsFrom": [
             "project_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "web_analytics_sites_organization_id_organization_id_fk": {
+          "name": "web_analytics_sites_organization_id_organization_id_fk",
+          "tableFrom": "web_analytics_sites",
+          "tableTo": "organization",
+          "columnsFrom": [
+            "organization_id"
           ],
           "columnsTo": [
             "id"
