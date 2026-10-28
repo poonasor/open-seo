@@ -156,8 +156,9 @@ async function rankTrackingSection(
       projectId,
       topQueries.map((q) => q.query),
     );
-    // One latest position per keyword per device; ties (two configs, same
-    // instant) keep the first row.
+    // One latest position per keyword per device. A tie (two configs, same
+    // instant) lets the later row win; SQL row order is unspecified, so either
+    // snapshot is as good as the other.
     const latest = new Map<string, Map<string, RankSnapshot>>();
     for (const snapshot of snapshots) {
       const devices =
