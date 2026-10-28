@@ -80,7 +80,7 @@ export async function startFindingsService(): Promise<{
         id text PRIMARY KEY, observation_id text NOT NULL, domain text NOT NULL,
         own integer NOT NULL, mentioned integer NOT NULL, cited integer NOT NULL);`,
       ...readFileSync(
-        "drizzle/sqlite/0063_magenta_blacklash.sql",
+        "drizzle/sqlite/0064_mean_franklin_storm.sql",
         "utf8",
       ).split("--> statement-breakpoint"),
     ].join("\n"),
