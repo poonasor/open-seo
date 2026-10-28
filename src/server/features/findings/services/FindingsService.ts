@@ -157,7 +157,15 @@ async function listFindings(
   projectId: string,
   filter: { stage?: FindingStage; prefix?: string },
 ) {
-  return FindingsRepository.listFindings(projectId, filter);
+  const [rows, entered] = await Promise.all([
+    FindingsRepository.listFindings(projectId, filter),
+    FindingsRepository.listStageEnteredAt(projectId),
+  ]);
+  const enteredAt = new Map(entered.map((e) => [e.findingId, e.at]));
+  return rows.map((row) => ({
+    ...row,
+    stageEnteredAt: enteredAt.get(row.id) ?? row.createdAt,
+  }));
 }
 
 async function updateFinding(

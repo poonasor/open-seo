@@ -54,6 +54,7 @@ import { Route as AppPProjectIdBacklinksRouteImport } from './routes/_app/p/$pro
 import { Route as AppPProjectIdBrandLookupRouteImport } from './routes/_app/p/$projectId/brand-lookup'
 import { Route as AppPProjectIdContextRouteImport } from './routes/_app/p/$projectId/context'
 import { Route as AppPProjectIdDomainRouteImport } from './routes/_app/p/$projectId/domain'
+import { Route as AppPProjectIdFindingsRouteImport } from './routes/_app/p/$projectId/findings'
 import { Route as AppPProjectIdKeywordsRouteImport } from './routes/_app/p/$projectId/keywords'
 import { Route as AppPProjectIdLocalSeoRouteImport } from './routes/_app/p/$projectId/local-seo'
 import { Route as AppPProjectIdPromptExplorerRouteImport } from './routes/_app/p/$projectId/prompt-explorer'
@@ -68,6 +69,8 @@ import { Route as ApiGscOauthCallbackRouteImport } from './routes/api/gsc/oauth/
 import { Route as AppPProjectIdAiVisibilityIndexRouteImport } from './routes/_app/p/$projectId/ai-visibility/index'
 import { Route as AppPProjectIdAiVisibilityResearchRouteImport } from './routes/_app/p/$projectId/ai-visibility/research'
 import { Route as AppPProjectIdAuditIndexRouteImport } from './routes/_app/p/$projectId/audit/index'
+import { Route as AppPProjectIdFindingsIndexRouteImport } from './routes/_app/p/$projectId/findings/index'
+import { Route as AppPProjectIdFindingsFindingIdRouteImport } from './routes/_app/p/$projectId/findings/$findingId'
 import { Route as AppPProjectIdLocalSeoIndexRouteImport } from './routes/_app/p/$projectId/local-seo/index'
 import { Route as AppPProjectIdLocalSeoTrackerIdRouteImport } from './routes/_app/p/$projectId/local-seo/$trackerId'
 import { Route as AppPProjectIdRankTrackingIndexRouteImport } from './routes/_app/p/$projectId/rank-tracking/index'
@@ -311,6 +314,11 @@ const AppPProjectIdDomainRoute = AppPProjectIdDomainRouteImport.update({
   path: '/domain',
   getParentRoute: () => AppPProjectIdRouteRoute,
 } as any)
+const AppPProjectIdFindingsRoute = AppPProjectIdFindingsRouteImport.update({
+  id: '/findings',
+  path: '/findings',
+  getParentRoute: () => AppPProjectIdRouteRoute,
+} as any)
 const AppPProjectIdKeywordsRoute = AppPProjectIdKeywordsRouteImport.update({
   id: '/keywords',
   path: '/keywords',
@@ -387,6 +395,18 @@ const AppPProjectIdAuditIndexRoute = AppPProjectIdAuditIndexRouteImport.update({
   path: '/audit/',
   getParentRoute: () => AppPProjectIdRouteRoute,
 } as any)
+const AppPProjectIdFindingsIndexRoute =
+  AppPProjectIdFindingsIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AppPProjectIdFindingsRoute,
+  } as any)
+const AppPProjectIdFindingsFindingIdRoute =
+  AppPProjectIdFindingsFindingIdRouteImport.update({
+    id: '/$findingId',
+    path: '/$findingId',
+    getParentRoute: () => AppPProjectIdFindingsRoute,
+  } as any)
 const AppPProjectIdLocalSeoIndexRoute =
   AppPProjectIdLocalSeoIndexRouteImport.update({
     id: '/',
@@ -513,6 +533,7 @@ export interface FileRoutesByFullPath {
   '/p/$projectId/brand-lookup': typeof AppPProjectIdBrandLookupRoute
   '/p/$projectId/context': typeof AppPProjectIdContextRoute
   '/p/$projectId/domain': typeof AppPProjectIdDomainRoute
+  '/p/$projectId/findings': typeof AppPProjectIdFindingsRouteWithChildren
   '/p/$projectId/keywords': typeof AppPProjectIdKeywordsRoute
   '/p/$projectId/local-seo': typeof AppPProjectIdLocalSeoRouteWithChildren
   '/p/$projectId/prompt-explorer': typeof AppPProjectIdPromptExplorerRoute
@@ -526,6 +547,7 @@ export interface FileRoutesByFullPath {
   '/api/gsc/oauth/callback': typeof ApiGscOauthCallbackRoute
   '/p/$projectId/': typeof AppPProjectIdIndexRoute
   '/p/$projectId/ai-visibility/research': typeof AppPProjectIdAiVisibilityResearchRoute
+  '/p/$projectId/findings/$findingId': typeof AppPProjectIdFindingsFindingIdRoute
   '/p/$projectId/local-seo/$trackerId': typeof AppPProjectIdLocalSeoTrackerIdRoute
   '/p/$projectId/rank-tracking/$configId': typeof AppPProjectIdRankTrackingConfigIdRoute
   '/p/$projectId/reports/$reportId': typeof AppPProjectIdReportsReportIdRoute
@@ -535,6 +557,7 @@ export interface FileRoutesByFullPath {
   '/report-map/$grant/$z/$x/$y': typeof ReportMapGrantZXYRoute
   '/p/$projectId/ai-visibility/': typeof AppPProjectIdAiVisibilityIndexRoute
   '/p/$projectId/audit/': typeof AppPProjectIdAuditIndexRoute
+  '/p/$projectId/findings/': typeof AppPProjectIdFindingsIndexRoute
   '/p/$projectId/local-seo/': typeof AppPProjectIdLocalSeoIndexRoute
   '/p/$projectId/rank-tracking/': typeof AppPProjectIdRankTrackingIndexRoute
   '/p/$projectId/reports/': typeof AppPProjectIdReportsIndexRoute
@@ -592,6 +615,7 @@ export interface FileRoutesByTo {
   '/api/gsc/oauth/callback': typeof ApiGscOauthCallbackRoute
   '/p/$projectId': typeof AppPProjectIdIndexRoute
   '/p/$projectId/ai-visibility/research': typeof AppPProjectIdAiVisibilityResearchRoute
+  '/p/$projectId/findings/$findingId': typeof AppPProjectIdFindingsFindingIdRoute
   '/p/$projectId/local-seo/$trackerId': typeof AppPProjectIdLocalSeoTrackerIdRoute
   '/p/$projectId/rank-tracking/$configId': typeof AppPProjectIdRankTrackingConfigIdRoute
   '/p/$projectId/reports/$reportId': typeof AppPProjectIdReportsReportIdRoute
@@ -601,6 +625,7 @@ export interface FileRoutesByTo {
   '/report-map/$grant/$z/$x/$y': typeof ReportMapGrantZXYRoute
   '/p/$projectId/ai-visibility': typeof AppPProjectIdAiVisibilityIndexRoute
   '/p/$projectId/audit': typeof AppPProjectIdAuditIndexRoute
+  '/p/$projectId/findings': typeof AppPProjectIdFindingsIndexRoute
   '/p/$projectId/local-seo': typeof AppPProjectIdLocalSeoIndexRoute
   '/p/$projectId/rank-tracking': typeof AppPProjectIdRankTrackingIndexRoute
   '/p/$projectId/reports': typeof AppPProjectIdReportsIndexRoute
@@ -655,6 +680,7 @@ export interface FileRoutesById {
   '/_app/p/$projectId/brand-lookup': typeof AppPProjectIdBrandLookupRoute
   '/_app/p/$projectId/context': typeof AppPProjectIdContextRoute
   '/_app/p/$projectId/domain': typeof AppPProjectIdDomainRoute
+  '/_app/p/$projectId/findings': typeof AppPProjectIdFindingsRouteWithChildren
   '/_app/p/$projectId/keywords': typeof AppPProjectIdKeywordsRoute
   '/_app/p/$projectId/local-seo': typeof AppPProjectIdLocalSeoRouteWithChildren
   '/_app/p/$projectId/prompt-explorer': typeof AppPProjectIdPromptExplorerRoute
@@ -668,6 +694,7 @@ export interface FileRoutesById {
   '/api/gsc/oauth/callback': typeof ApiGscOauthCallbackRoute
   '/_app/p/$projectId/': typeof AppPProjectIdIndexRoute
   '/_app/p/$projectId/ai-visibility/research': typeof AppPProjectIdAiVisibilityResearchRoute
+  '/_app/p/$projectId/findings/$findingId': typeof AppPProjectIdFindingsFindingIdRoute
   '/_app/p/$projectId/local-seo/$trackerId': typeof AppPProjectIdLocalSeoTrackerIdRoute
   '/_app/p/$projectId/rank-tracking/$configId': typeof AppPProjectIdRankTrackingConfigIdRoute
   '/_app/p/$projectId/reports/$reportId': typeof AppPProjectIdReportsReportIdRoute
@@ -677,6 +704,7 @@ export interface FileRoutesById {
   '/report-map/$grant/$z/$x/$y': typeof ReportMapGrantZXYRoute
   '/_app/p/$projectId/ai-visibility/': typeof AppPProjectIdAiVisibilityIndexRoute
   '/_app/p/$projectId/audit/': typeof AppPProjectIdAuditIndexRoute
+  '/_app/p/$projectId/findings/': typeof AppPProjectIdFindingsIndexRoute
   '/_app/p/$projectId/local-seo/': typeof AppPProjectIdLocalSeoIndexRoute
   '/_app/p/$projectId/rank-tracking/': typeof AppPProjectIdRankTrackingIndexRoute
   '/_app/p/$projectId/reports/': typeof AppPProjectIdReportsIndexRoute
@@ -729,6 +757,7 @@ export interface FileRouteTypes {
     | '/p/$projectId/brand-lookup'
     | '/p/$projectId/context'
     | '/p/$projectId/domain'
+    | '/p/$projectId/findings'
     | '/p/$projectId/keywords'
     | '/p/$projectId/local-seo'
     | '/p/$projectId/prompt-explorer'
@@ -742,6 +771,7 @@ export interface FileRouteTypes {
     | '/api/gsc/oauth/callback'
     | '/p/$projectId/'
     | '/p/$projectId/ai-visibility/research'
+    | '/p/$projectId/findings/$findingId'
     | '/p/$projectId/local-seo/$trackerId'
     | '/p/$projectId/rank-tracking/$configId'
     | '/p/$projectId/reports/$reportId'
@@ -751,6 +781,7 @@ export interface FileRouteTypes {
     | '/report-map/$grant/$z/$x/$y'
     | '/p/$projectId/ai-visibility/'
     | '/p/$projectId/audit/'
+    | '/p/$projectId/findings/'
     | '/p/$projectId/local-seo/'
     | '/p/$projectId/rank-tracking/'
     | '/p/$projectId/reports/'
@@ -808,6 +839,7 @@ export interface FileRouteTypes {
     | '/api/gsc/oauth/callback'
     | '/p/$projectId'
     | '/p/$projectId/ai-visibility/research'
+    | '/p/$projectId/findings/$findingId'
     | '/p/$projectId/local-seo/$trackerId'
     | '/p/$projectId/rank-tracking/$configId'
     | '/p/$projectId/reports/$reportId'
@@ -817,6 +849,7 @@ export interface FileRouteTypes {
     | '/report-map/$grant/$z/$x/$y'
     | '/p/$projectId/ai-visibility'
     | '/p/$projectId/audit'
+    | '/p/$projectId/findings'
     | '/p/$projectId/local-seo'
     | '/p/$projectId/rank-tracking'
     | '/p/$projectId/reports'
@@ -870,6 +903,7 @@ export interface FileRouteTypes {
     | '/_app/p/$projectId/brand-lookup'
     | '/_app/p/$projectId/context'
     | '/_app/p/$projectId/domain'
+    | '/_app/p/$projectId/findings'
     | '/_app/p/$projectId/keywords'
     | '/_app/p/$projectId/local-seo'
     | '/_app/p/$projectId/prompt-explorer'
@@ -883,6 +917,7 @@ export interface FileRouteTypes {
     | '/api/gsc/oauth/callback'
     | '/_app/p/$projectId/'
     | '/_app/p/$projectId/ai-visibility/research'
+    | '/_app/p/$projectId/findings/$findingId'
     | '/_app/p/$projectId/local-seo/$trackerId'
     | '/_app/p/$projectId/rank-tracking/$configId'
     | '/_app/p/$projectId/reports/$reportId'
@@ -892,6 +927,7 @@ export interface FileRouteTypes {
     | '/report-map/$grant/$z/$x/$y'
     | '/_app/p/$projectId/ai-visibility/'
     | '/_app/p/$projectId/audit/'
+    | '/_app/p/$projectId/findings/'
     | '/_app/p/$projectId/local-seo/'
     | '/_app/p/$projectId/rank-tracking/'
     | '/_app/p/$projectId/reports/'
@@ -1246,6 +1282,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppPProjectIdDomainRouteImport
       parentRoute: typeof AppPProjectIdRouteRoute
     }
+    '/_app/p/$projectId/findings': {
+      id: '/_app/p/$projectId/findings'
+      path: '/findings'
+      fullPath: '/p/$projectId/findings'
+      preLoaderRoute: typeof AppPProjectIdFindingsRouteImport
+      parentRoute: typeof AppPProjectIdRouteRoute
+    }
     '/_app/p/$projectId/keywords': {
       id: '/_app/p/$projectId/keywords'
       path: '/keywords'
@@ -1343,6 +1386,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/p/$projectId/audit/'
       preLoaderRoute: typeof AppPProjectIdAuditIndexRouteImport
       parentRoute: typeof AppPProjectIdRouteRoute
+    }
+    '/_app/p/$projectId/findings/': {
+      id: '/_app/p/$projectId/findings/'
+      path: '/'
+      fullPath: '/p/$projectId/findings/'
+      preLoaderRoute: typeof AppPProjectIdFindingsIndexRouteImport
+      parentRoute: typeof AppPProjectIdFindingsRoute
+    }
+    '/_app/p/$projectId/findings/$findingId': {
+      id: '/_app/p/$projectId/findings/$findingId'
+      path: '/$findingId'
+      fullPath: '/p/$projectId/findings/$findingId'
+      preLoaderRoute: typeof AppPProjectIdFindingsFindingIdRouteImport
+      parentRoute: typeof AppPProjectIdFindingsRoute
     }
     '/_app/p/$projectId/local-seo/': {
       id: '/_app/p/$projectId/local-seo/'
@@ -1479,6 +1536,21 @@ const AppPProjectIdAiVisibilityRouteWithChildren =
     AppPProjectIdAiVisibilityRouteChildren,
   )
 
+interface AppPProjectIdFindingsRouteChildren {
+  AppPProjectIdFindingsFindingIdRoute: typeof AppPProjectIdFindingsFindingIdRoute
+  AppPProjectIdFindingsIndexRoute: typeof AppPProjectIdFindingsIndexRoute
+}
+
+const AppPProjectIdFindingsRouteChildren: AppPProjectIdFindingsRouteChildren = {
+  AppPProjectIdFindingsFindingIdRoute: AppPProjectIdFindingsFindingIdRoute,
+  AppPProjectIdFindingsIndexRoute: AppPProjectIdFindingsIndexRoute,
+}
+
+const AppPProjectIdFindingsRouteWithChildren =
+  AppPProjectIdFindingsRoute._addFileChildren(
+    AppPProjectIdFindingsRouteChildren,
+  )
+
 interface AppPProjectIdLocalSeoRouteChildren {
   AppPProjectIdLocalSeoTrackerIdRoute: typeof AppPProjectIdLocalSeoTrackerIdRoute
   AppPProjectIdLocalSeoIndexRoute: typeof AppPProjectIdLocalSeoIndexRoute
@@ -1535,6 +1607,7 @@ interface AppPProjectIdRouteRouteChildren {
   AppPProjectIdBrandLookupRoute: typeof AppPProjectIdBrandLookupRoute
   AppPProjectIdContextRoute: typeof AppPProjectIdContextRoute
   AppPProjectIdDomainRoute: typeof AppPProjectIdDomainRoute
+  AppPProjectIdFindingsRoute: typeof AppPProjectIdFindingsRouteWithChildren
   AppPProjectIdKeywordsRoute: typeof AppPProjectIdKeywordsRoute
   AppPProjectIdLocalSeoRoute: typeof AppPProjectIdLocalSeoRouteWithChildren
   AppPProjectIdPromptExplorerRoute: typeof AppPProjectIdPromptExplorerRoute
@@ -1558,6 +1631,7 @@ const AppPProjectIdRouteRouteChildren: AppPProjectIdRouteRouteChildren = {
   AppPProjectIdBrandLookupRoute: AppPProjectIdBrandLookupRoute,
   AppPProjectIdContextRoute: AppPProjectIdContextRoute,
   AppPProjectIdDomainRoute: AppPProjectIdDomainRoute,
+  AppPProjectIdFindingsRoute: AppPProjectIdFindingsRouteWithChildren,
   AppPProjectIdKeywordsRoute: AppPProjectIdKeywordsRoute,
   AppPProjectIdLocalSeoRoute: AppPProjectIdLocalSeoRouteWithChildren,
   AppPProjectIdPromptExplorerRoute: AppPProjectIdPromptExplorerRoute,

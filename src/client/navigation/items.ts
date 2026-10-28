@@ -5,6 +5,7 @@ import {
   ChartLine,
   ClipboardCheck,
   FileText,
+  Flag,
   Globe,
   LayoutDashboard,
   Link2,
@@ -64,6 +65,11 @@ const projectNavItems = [
     to: "/p/$projectId/web-analytics" as const,
     label: "Web Analytics",
     icon: Users,
+  },
+  {
+    to: "/p/$projectId/findings" as const,
+    label: "Findings",
+    icon: Flag,
   },
   {
     to: "/p/$projectId/ai-visibility" as const,
@@ -154,6 +160,7 @@ export function getProjectNavGroups(projectId: string) {
         byPath("/p/$projectId/saved"),
         byPath("/p/$projectId/audit"),
         byPath("/p/$projectId/web-analytics"),
+        byPath("/p/$projectId/findings"),
       ],
     },
     {
