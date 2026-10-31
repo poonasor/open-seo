@@ -1,0 +1,414 @@
+name: Upstream sync
+
+# Merges every-app/open-seo main into this fork and opens one pull request
+# from sync/upstream into main. A clean merge may update sync/upstream with
+# --force-with-lease so the pull request stays a merge of current main.
+# main is never pushed. A conflict aborts before that push.
+
+on:
+  schedule:
+    # 12:15 UTC every day. Off the hour so it misses the schedule stampede.
+    - cron: "15 12 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+concurrency:
+  group: upstream-sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    # This file is for forks. On the upstream repo the merge would be a no-op.
+    if: github.repository != 'every-app/open-seo'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout fork main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          # Full history so the upstream merge has real parents.
+          fetch-depth: 0
+
+      - name: Merge upstream and open or update one pull request
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          UPSTREAM_REPO: every-app/open-seo
+          SYNC_BRANCH: sync/upstream
+        run: |
+          set -euo pipefail
+
+          if [[ "$SYNC_BRANCH" == "main" || "$SYNC_BRANCH" == "master" ]]; then
+            echo "Refusing to use ${SYNC_BRANCH} as the sync branch." >&2
+            exit 1
+          fi
+
+          MERGE_MSG="Merge upstream ${UPSTREAM_REPO} main into ${SYNC_BRANCH}"
+          MAIN_MERGE_MSG="Merge fork main into ${SYNC_BRANCH}"
+          MARKER_MSG="Record upstream sync conflicts"
+          LABEL="upstream-conflict"
+          export GIT_MERGE_AUTOEDIT=no
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          export GIT_AUTHOR_NAME="github-actions[bot]"
+          export GIT_AUTHOR_EMAIL="41898282+github-actions[bot]@users.noreply.github.com"
+          export GIT_COMMITTER_NAME="github-actions[bot]"
+          export GIT_COMMITTER_EMAIL="41898282+github-actions[bot]@users.noreply.github.com"
+
+          upstream_url="https://github.com/${UPSTREAM_REPO}.git"
+          if git remote get-url upstream >/dev/null 2>&1; then
+            git remote set-url upstream "$upstream_url"
+          else
+            git remote add upstream "$upstream_url"
+          fi
+
+          # checkout stores a credential header for github.com. Clear it so the
+          # fork token is not sent with the public upstream fetch.
+          git -c "http.https://github.com/.extraheader=" fetch --no-tags upstream main
+          git fetch --no-tags origin main
+
+          remote_sync_sha=""
+          ls_status=0
+          git ls-remote --exit-code --heads origin "$SYNC_BRANCH" >/dev/null 2>&1 || ls_status=$?
+          if [[ "$ls_status" -eq 0 ]]; then
+            git fetch --no-tags origin "+refs/heads/${SYNC_BRANCH}:refs/remotes/origin/${SYNC_BRANCH}"
+            remote_sync_sha=$(git rev-parse "origin/${SYNC_BRANCH}")
+          elif [[ "$ls_status" -ne 2 ]]; then
+            echo "Could not list ${SYNC_BRANCH} on origin (git ls-remote exited ${ls_status})." >&2
+            exit 1
+          fi
+
+          fork_main=$(git rev-parse origin/main)
+          upstream_sha=$(git rev-parse upstream/main)
+          issues_enabled=$(gh api "repos/${GITHUB_REPOSITORY}" --jq .has_issues)
+          body_file=$(mktemp)
+
+          note() {
+            printf '%s\n' "$1"
+            if [[ -n "${GITHUB_STEP_SUMMARY:-}" ]]; then
+              printf '%s\n' "$1" >> "$GITHUB_STEP_SUMMARY"
+            fi
+          }
+
+          has_human_commits() {
+            [[ -n "$remote_sync_sha" ]] || return 1
+            local subjects subject
+            # First-parent only: upstream commits brought in by our merge are not
+            # edits someone pushed to the sync branch.
+            subjects=$(git log --first-parent --format=%s "${fork_main}..${remote_sync_sha}")
+            while IFS= read -r subject; do
+              [[ -z "$subject" ]] && continue
+              [[ "$subject" == "$MERGE_MSG" ]] && continue
+              [[ "$subject" == "$MAIN_MERGE_MSG" ]] && continue
+              [[ "$subject" == "$MARKER_MSG" ]] && continue
+              return 0
+            done <<< "$subjects"
+            return 1
+          }
+
+          ensure_label() {
+            gh label create "$LABEL" \
+              --repo "$GITHUB_REPOSITORY" \
+              --color d73a4a \
+              --description "Upstream merge has conflicts" \
+              --force >/dev/null
+          }
+
+          write_conflict_body() {
+            local what="$1"
+            local files="$2"
+            local file
+            {
+              printf 'Merging %s into %s stopped with conflicts. The merge was aborted. main was not changed.\n\n' "$what" "$SYNC_BRANCH"
+              printf -- '- Upstream: %s@%s\n' "$UPSTREAM_REPO" "$upstream_sha"
+              printf -- '- Fork main: %s\n\n' "$fork_main"
+              printf 'Conflicting files:\n\n'
+              if [[ -z "$files" ]]; then
+                printf '%s\n' "- (git reported a merge failure without listing unmerged files)"
+              else
+                while IFS= read -r file; do
+                  [[ -z "$file" ]] && continue
+                  printf -- '- %s\n' "$file"
+                done <<< "$files"
+              fi
+              printf '\nThe sync branch was not updated with this failed merge. Resolve the files on %s, or wait for a later run. This workflow does not force-push main.\n' "$SYNC_BRANCH"
+            } > "$body_file"
+          }
+
+          write_clean_body() {
+            cat > "$body_file" <<EOF
+          Merges upstream \`${UPSTREAM_REPO}\` main (\`${upstream_sha}\`) into this fork's \`main\` for review.
+
+          Fork \`main\` at this run: \`${fork_main}\`.
+
+          This pull request is opened with the workflow \`GITHUB_TOKEN\`. GitHub does not run other workflows for events that token causes, so CI does not start on this pull request. Close and reopen it, or push another commit, to run CI before merging.
+
+          \`main\` is not force-pushed. Merge this pull request if the update looks right.
+          EOF
+          }
+
+          find_sync_pr() {
+            gh pr list \
+              --repo "$GITHUB_REPOSITORY" \
+              --base main \
+              --head "$SYNC_BRANCH" \
+              --state open \
+              --limit 1 \
+              --json number \
+              --jq '.[0].number // empty'
+          }
+
+          push_sync() {
+            local head
+            head=$(git rev-parse --abbrev-ref HEAD)
+            if [[ "$head" != "$SYNC_BRANCH" ]]; then
+              echo "Refusing to push ${head}." >&2
+              exit 1
+            fi
+            if [[ -z "$remote_sync_sha" ]]; then
+              git push origin "HEAD:refs/heads/${SYNC_BRANCH}"
+              remote_sync_sha=$(git rev-parse HEAD)
+              return 0
+            fi
+            if git merge-base --is-ancestor "$remote_sync_sha" HEAD; then
+              git push origin "HEAD:refs/heads/${SYNC_BRANCH}"
+            else
+              git push --force-with-lease="refs/heads/${SYNC_BRANCH}:${remote_sync_sha}" \
+                origin "HEAD:refs/heads/${SYNC_BRANCH}"
+            fi
+            remote_sync_sha=$(git rev-parse HEAD)
+          }
+
+          report_conflicts() {
+            local what="$1"
+            local files num existing draft
+            files=$(git diff --name-only --diff-filter=U | sort -u)
+            git merge --abort
+            ensure_label
+            write_conflict_body "$what" "$files"
+
+            if [[ "$issues_enabled" == "true" ]]; then
+              num=$(gh issue list \
+                --repo "$GITHUB_REPOSITORY" \
+                --state open \
+                --label "$LABEL" \
+                --limit 1 \
+                --json number \
+                --jq '.[0].number // empty')
+              if [[ -n "$num" ]]; then
+                gh issue edit "$num" --repo "$GITHUB_REPOSITORY" \
+                  --title "Upstream sync has merge conflicts" \
+                  --body-file "$body_file" >/dev/null
+                note "Updated issue #${num}. Conflicting files were not merged."
+              else
+                gh issue create --repo "$GITHUB_REPOSITORY" \
+                  --title "Upstream sync has merge conflicts" \
+                  --label "$LABEL" \
+                  --body-file "$body_file"
+                note "Opened a conflict issue. Nothing was merged."
+              fi
+              exit 1
+            fi
+
+            # Issues are disabled. Report on the sync pull request instead.
+            if [[ -z "$remote_sync_sha" ]]; then
+              git checkout --no-track -B "$SYNC_BRANCH" origin/main
+              git commit --allow-empty -m "$MARKER_MSG"
+              push_sync
+            fi
+
+            existing=$(find_sync_pr)
+            if [[ -n "$existing" ]]; then
+              gh pr edit "$existing" --repo "$GITHUB_REPOSITORY" \
+                --title "Upstream sync has merge conflicts" \
+                --body-file "$body_file" \
+                --add-label "$LABEL" >/dev/null
+              draft=$(gh pr view "$existing" --repo "$GITHUB_REPOSITORY" --json isDraft --jq .isDraft)
+              if [[ "$draft" != "true" ]]; then
+                gh pr ready "$existing" --repo "$GITHUB_REPOSITORY" --undo >/dev/null
+              fi
+              note "Updated pull request #${existing} with the conflicting files. The failed merge was not pushed."
+            else
+              gh pr create --repo "$GITHUB_REPOSITORY" \
+                --base main \
+                --head "$SYNC_BRANCH" \
+                --draft \
+                --label "$LABEL" \
+                --title "Upstream sync has merge conflicts" \
+                --body-file "$body_file"
+              note "Opened a draft pull request listing the conflicting files. The failed merge was not pushed."
+            fi
+            exit 1
+          }
+
+          # Returns 0 after creating a merge commit.
+          # Returns 1 when the ref is already up to date or changes no files.
+          # A conflict calls report_conflicts, which exits without pushing a
+          # resolution. Any other git failure exits non-zero.
+          # Callers may ignore only status 1. A conditional call turns off
+          # errexit for this function, so the git commands below exit themselves.
+          merge_ref() {
+            local ref="$1"
+            local what="$2"
+            local message="$3"
+            local status=0
+            local merge_head=""
+            local tree_status=0
+            local index_status=0
+
+            git merge --no-ff --no-commit "$ref" || status=$?
+            if [[ "$status" -ne 0 ]]; then
+              if git diff --name-only --diff-filter=U | grep -q .; then
+                report_conflicts "$what"
+              fi
+              echo "Merging ${what} failed." >&2
+              exit 1
+            fi
+            merge_head=$(git rev-parse --git-path MERGE_HEAD) || {
+              echo "Could not resolve MERGE_HEAD while merging ${what}." >&2
+              exit 1
+            }
+            if [[ ! -f "$merge_head" ]]; then
+              return 1
+            fi
+            git diff --quiet || tree_status=$?
+            if [[ "$tree_status" -gt 1 ]]; then
+              echo "Could not compare the working tree while merging ${what}." >&2
+              exit 1
+            fi
+            git diff --cached --quiet || index_status=$?
+            if [[ "$index_status" -gt 1 ]]; then
+              echo "Could not compare the index while merging ${what}." >&2
+              exit 1
+            fi
+            if [[ "$tree_status" -eq 0 && "$index_status" -eq 0 ]]; then
+              git merge --abort || {
+                echo "Could not abort the empty merge of ${what}." >&2
+                exit 1
+              }
+              return 1
+            fi
+            git commit -m "$message" || {
+              echo "Could not commit the merge of ${what}." >&2
+              exit 1
+            }
+            return 0
+          }
+
+          close_conflict_issues() {
+            local num
+            [[ "$issues_enabled" == "true" ]] || return 0
+            num=$(gh issue list \
+              --repo "$GITHUB_REPOSITORY" \
+              --state open \
+              --label "$LABEL" \
+              --limit 1 \
+              --json number \
+              --jq '.[0].number // empty' 2>/dev/null || true)
+            [[ -n "$num" ]] || return 0
+            gh issue close "$num" --repo "$GITHUB_REPOSITORY" \
+              --comment "Upstream main is in fork main, or the sync branch merged cleanly. Closing this conflict report." \
+              >/dev/null
+            note "Closed conflict issue #${num}."
+          }
+
+          close_obsolete_conflict_pr() {
+            local num kind
+            [[ "$issues_enabled" == "true" ]] && return 0
+            [[ -n "$remote_sync_sha" ]] || return 0
+            git diff --quiet "$fork_main" "$remote_sync_sha" || return 0
+            num=$(find_sync_pr)
+            [[ -n "$num" ]] || return 0
+            kind=$(gh pr view "$num" --repo "$GITHUB_REPOSITORY" --json isDraft,labels \
+              --jq "if .isDraft and any(.labels[]; .name == \"${LABEL}\") then \"conflict\" else \"other\" end")
+            [[ "$kind" == "conflict" ]] || return 0
+            gh pr close "$num" --repo "$GITHUB_REPOSITORY" \
+              --comment "Upstream has nothing new relative to fork main. Closing this conflict report." \
+              >/dev/null
+            note "Closed conflict pull request #${num}."
+          }
+
+          finish_noop() {
+            note "$1"
+            close_conflict_issues
+            close_obsolete_conflict_pr
+            exit 0
+          }
+
+          publish_clean_pr() {
+            local num draft
+            write_clean_body
+            num=$(find_sync_pr)
+            if [[ -n "$num" ]]; then
+              gh pr edit "$num" --repo "$GITHUB_REPOSITORY" \
+                --title "Sync upstream ${UPSTREAM_REPO} main" \
+                --body-file "$body_file" >/dev/null
+              # The label is absent on a pull request that was never in conflict.
+              gh pr edit "$num" --repo "$GITHUB_REPOSITORY" --remove-label "$LABEL" >/dev/null || true
+              draft=$(gh pr view "$num" --repo "$GITHUB_REPOSITORY" --json isDraft --jq .isDraft)
+              if [[ "$draft" == "true" ]]; then
+                gh pr ready "$num" --repo "$GITHUB_REPOSITORY" >/dev/null
+              fi
+              note "Updated pull request #${num}."
+            else
+              gh pr create --repo "$GITHUB_REPOSITORY" \
+                --base main \
+                --head "$SYNC_BRANCH" \
+                --title "Sync upstream ${UPSTREAM_REPO} main" \
+                --body-file "$body_file"
+              note "Opened a pull request for the upstream merge."
+            fi
+            close_conflict_issues
+          }
+
+          if git merge-base --is-ancestor "$upstream_sha" "$fork_main"; then
+            finish_noop "Upstream main ${upstream_sha} is already in fork main ${fork_main}."
+          fi
+
+          if [[ -n "$remote_sync_sha" ]] \
+            && git merge-base --is-ancestor "$upstream_sha" "$remote_sync_sha" \
+            && git merge-base --is-ancestor "$fork_main" "$remote_sync_sha"; then
+            if git diff --quiet "$fork_main" "$remote_sync_sha"; then
+              finish_noop "sync/upstream already matches fork main. Upstream has nothing new."
+            fi
+            note "sync/upstream already contains fork main and upstream main."
+            publish_clean_pr
+            exit 0
+          fi
+
+          if [[ -n "$remote_sync_sha" ]] && has_human_commits; then
+            note "Keeping commits already on ${SYNC_BRANCH} and merging into them."
+            git checkout --no-track -B "$SYNC_BRANCH" "$remote_sync_sha"
+            # Status 1 means nothing new, so the next merge still runs. A
+            # conflict does not return: merge_ref reports it and exits. Any
+            # other status is a git error and fails the job.
+            merge_status=0
+            merge_ref origin/main "fork main (${fork_main})" "$MAIN_MERGE_MSG" || merge_status=$?
+            [[ "$merge_status" -le 1 ]] || exit "$merge_status"
+            merge_status=0
+            merge_ref upstream/main "upstream ${UPSTREAM_REPO} main (${upstream_sha})" "$MERGE_MSG" || merge_status=$?
+            [[ "$merge_status" -le 1 ]] || exit "$merge_status"
+            if git diff --quiet "$fork_main" HEAD; then
+              finish_noop "Upstream main does not change files relative to fork main."
+            fi
+            if [[ "$(git rev-parse HEAD)" != "$remote_sync_sha" ]]; then
+              push_sync
+            fi
+            publish_clean_pr
+            exit 0
+          fi
+
+          note "Building ${SYNC_BRANCH} from fork main ${fork_main}."
+          git checkout --no-track -B "$SYNC_BRANCH" origin/main
+          if merge_ref upstream/main "upstream ${UPSTREAM_REPO} main (${upstream_sha})" "$MERGE_MSG"; then
+            push_sync
+            publish_clean_pr
+          else
+            finish_noop "Upstream main does not change any files relative to fork main ${fork_main}."
+          fi
