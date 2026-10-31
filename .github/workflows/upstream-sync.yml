@@ -247,11 +247,12 @@ jobs:
             exit 1
           }
 
-          # Creates a merge commit when ref changes files.
-          # Sets merge_result to merged, or noop when nothing changes.
-          # Exits on conflicts and on any other git failure.
-          # Call it on its own line. if, &&, and || turn off set -e for the
-          # whole function.
+          # Returns 0 after creating a merge commit.
+          # Returns 1 when the ref is already up to date or changes no files.
+          # A conflict calls report_conflicts, which exits without pushing a
+          # resolution. Any other git failure exits non-zero.
+          # Callers may ignore only status 1. A conditional call turns off
+          # errexit for this function, so the git commands below exit themselves.
           merge_ref() {
             local ref="$1"
             local what="$2"
@@ -261,7 +262,6 @@ jobs:
             local tree_status=0
             local index_status=0
 
-            merge_result=noop
             git merge --no-ff --no-commit "$ref" || status=$?
             if [[ "$status" -ne 0 ]]; then
               if git diff --name-only --diff-filter=U | grep -q .; then
@@ -275,7 +275,7 @@ jobs:
               exit 1
             }
             if [[ ! -f "$merge_head" ]]; then
-              return 0
+              return 1
             fi
             git diff --quiet || tree_status=$?
             if [[ "$tree_status" -gt 1 ]]; then
@@ -292,13 +292,12 @@ jobs:
                 echo "Could not abort the empty merge of ${what}." >&2
                 exit 1
               }
-              return 0
+              return 1
             fi
             git commit -m "$message" || {
               echo "Could not commit the merge of ${what}." >&2
               exit 1
             }
-            merge_result=merged
             return 0
           }
 
@@ -386,8 +385,15 @@ jobs:
           if [[ -n "$remote_sync_sha" ]] && has_human_commits; then
             note "Keeping commits already on ${SYNC_BRANCH} and merging into them."
             git checkout --no-track -B "$SYNC_BRANCH" "$remote_sync_sha"
-            merge_ref origin/main "fork main (${fork_main})" "$MAIN_MERGE_MSG"
-            merge_ref upstream/main "upstream ${UPSTREAM_REPO} main (${upstream_sha})" "$MERGE_MSG"
+            # Status 1 means nothing new, so the next merge still runs. A
+            # conflict does not return: merge_ref reports it and exits. Any
+            # other status is a git error and fails the job.
+            merge_status=0
+            merge_ref origin/main "fork main (${fork_main})" "$MAIN_MERGE_MSG" || merge_status=$?
+            [[ "$merge_status" -le 1 ]] || exit "$merge_status"
+            merge_status=0
+            merge_ref upstream/main "upstream ${UPSTREAM_REPO} main (${upstream_sha})" "$MERGE_MSG" || merge_status=$?
+            [[ "$merge_status" -le 1 ]] || exit "$merge_status"
             if git diff --quiet "$fork_main" HEAD; then
               finish_noop "Upstream main does not change files relative to fork main."
             fi
@@ -400,13 +406,9 @@ jobs:
 
           note "Building ${SYNC_BRANCH} from fork main ${fork_main}."
           git checkout --no-track -B "$SYNC_BRANCH" origin/main
-          merge_ref upstream/main "upstream ${UPSTREAM_REPO} main (${upstream_sha})" "$MERGE_MSG"
-          if [[ "$merge_result" == "merged" ]]; then
+          if merge_ref upstream/main "upstream ${UPSTREAM_REPO} main (${upstream_sha})" "$MERGE_MSG"; then
             push_sync
             publish_clean_pr
-          elif [[ "$merge_result" == "noop" ]]; then
-            finish_noop "Upstream main does not change any files relative to fork main ${fork_main}."
           else
-            echo "Unexpected merge result '${merge_result}'." >&2
-            exit 1
+            finish_noop "Upstream main does not change any files relative to fork main ${fork_main}."
           fi
