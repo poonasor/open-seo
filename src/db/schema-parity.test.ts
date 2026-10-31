@@ -18,6 +18,7 @@ import * as sqliteGsc from "./gsc.schema";
 import * as sqliteTelemetry from "./telemetry.schema";
 import * as sqliteAiVisibility from "./ai-visibility.schema";
 import * as sqliteLocalSeo from "./local-seo.schema";
+import * as sqliteFindings from "./findings.schema";
 import * as sqliteWebAnalytics from "./web-analytics.schema";
 import * as pgApp from "./pg/app.schema";
 import * as pgProjectContext from "./pg/project-context.schema";
@@ -32,6 +33,7 @@ import * as pgGsc from "./pg/gsc.schema";
 import * as pgTelemetry from "./pg/telemetry.schema";
 import * as pgAiVisibility from "./pg/ai-visibility.schema";
 import * as pgLocalSeo from "./pg/local-seo.schema";
+import * as pgFindings from "./pg/findings.schema";
 import * as pgWebAnalytics from "./pg/web-analytics.schema";
 
 // Guards the ONE structural artifact `db:generate` does not regenerate: the
@@ -167,6 +169,7 @@ const sqliteAppTables = tablesFrom(
   sqliteTelemetry,
   sqliteAiVisibility,
   sqliteLocalSeo,
+  sqliteFindings,
   sqliteWebAnalytics,
 );
 const pgAppTables = tablesFrom(
@@ -182,6 +185,7 @@ const pgAppTables = tablesFrom(
   pgTelemetry,
   pgAiVisibility,
   pgLocalSeo,
+  pgFindings,
   pgWebAnalytics,
 );
 const sqliteAuthTables = tablesFrom(sqliteAuth);

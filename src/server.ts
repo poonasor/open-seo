@@ -322,6 +322,11 @@ export default {
         await runScheduledAiVisibility();
       }),
       withPgClient(() => sendFirstAuditEmails()),
+      withPgClient(async () => {
+        const { runScheduledRemeasures } =
+          await import("@/server/features/findings/services/remeasure");
+        await runScheduledRemeasures();
+      }),
     ]);
     for (const result of checks)
       if (result.status === "rejected") throw result.reason;

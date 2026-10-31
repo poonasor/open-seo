@@ -71,6 +71,15 @@ import {
   getProjectContextTool,
   updateProjectContextTool,
 } from "@/server/mcp/tools/project-context";
+import {
+  createFindingTool,
+  getFindingTool,
+  listFindingsTool,
+  moveFindingStageTool,
+  remeasureFindingTool,
+  syncFindingsVikunjaTool,
+  updateFindingTool,
+} from "@/server/mcp/tools/findings-tools";
 import { listSavedKeywordsTool } from "@/server/mcp/tools/list-saved-keywords";
 import { removeSavedKeywordsTool } from "@/server/mcp/tools/remove-saved-keywords";
 import {
@@ -252,6 +261,13 @@ export function registerOpenSeoTools(
   register(saveProjectWebsiteSetupTool);
   register(getProjectContextTool);
   register(updateProjectContextTool);
+  register(listFindingsTool);
+  register(getFindingTool);
+  register(createFindingTool);
+  register(updateFindingTool);
+  register(moveFindingStageTool);
+  register(remeasureFindingTool);
+  register(syncFindingsVikunjaTool);
   register(listSavedKeywordsTool);
   register(removeSavedKeywordsTool);
   register(researchKeywordsTool);
