@@ -353,6 +353,8 @@ export async function fetchRankCheckTaskResult(input: {
 export async function fetchLocalSerp(input: {
   keyword: string;
   locationCoordinate?: string;
+  /** A DataForSEO location name, for a search across a whole city. */
+  locationName?: string;
   languageCode: string;
   searchType: "maps" | "local_finder";
   device: "desktop" | "mobile";
@@ -368,6 +370,7 @@ export async function fetchLocalSerp(input: {
       {
         keyword: input.keyword,
         location_coordinate: input.locationCoordinate,
+        location_name: input.locationName,
         language_code: input.languageCode,
         device: input.device,
         os,
@@ -390,6 +393,7 @@ export async function fetchLocalSerp(input: {
     {
       keyword: input.keyword,
       location_coordinate: input.locationCoordinate,
+      location_name: input.locationName,
       language_code: input.languageCode,
       device: input.device,
       os,
