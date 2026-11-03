@@ -207,11 +207,16 @@ jobs:
                   --body-file "$body_file" >/dev/null
                 note "Updated issue #${num}. Conflicting files were not merged."
               else
-                gh issue create --repo "$GITHUB_REPOSITORY" \
+                # report_conflicts can run inside a conditional, where
+                # errexit is off, so check the result instead of trusting it.
+                if gh issue create --repo "$GITHUB_REPOSITORY" \
                   --title "Upstream sync has merge conflicts" \
                   --label "$LABEL" \
-                  --body-file "$body_file"
-                note "Opened a conflict issue. Nothing was merged."
+                  --body-file "$body_file"; then
+                  note "Opened a conflict issue. Nothing was merged."
+                else
+                  note "Could not open a conflict issue. Nothing was merged."
+                fi
               fi
               exit 1
             fi
@@ -235,14 +240,19 @@ jobs:
               fi
               note "Updated pull request #${existing} with the conflicting files. The failed merge was not pushed."
             else
-              gh pr create --repo "$GITHUB_REPOSITORY" \
+              # report_conflicts can run inside a conditional, where errexit
+              # is off, so check the result instead of trusting it.
+              if gh pr create --repo "$GITHUB_REPOSITORY" \
                 --base main \
                 --head "$SYNC_BRANCH" \
                 --draft \
                 --label "$LABEL" \
                 --title "Upstream sync has merge conflicts" \
-                --body-file "$body_file"
-              note "Opened a draft pull request listing the conflicting files. The failed merge was not pushed."
+                --body-file "$body_file"; then
+                note "Opened a draft pull request listing the conflicting files. The failed merge was not pushed."
+              else
+                note "Could not open a pull request listing the conflicting files. Check that Actions may create pull requests. The failed merge was not pushed."
+              fi
             fi
             exit 1
           }
