@@ -42,6 +42,7 @@ export function foreignProjectCalls(b: Tenant, seeded: SeededData): ToolCall[] {
       },
     },
     { name: "list_saved_keywords", arguments: { projectId } },
+    { name: "get_suggested_keywords", arguments: { projectId } },
     { name: "save_keywords", arguments: { projectId, keywords: [INTRUDER] } },
     {
       name: "remove_saved_keywords",
