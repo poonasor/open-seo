@@ -23,12 +23,16 @@ import {
 import { z } from "zod";
 import {
   createMcpToolContext,
+  MCP_AUTH_CONTEXT_PROP,
   type McpProps,
   type ToolContext,
 } from "@/server/mcp/context";
 import { objectSchema } from "@/server/mcp/output-schemas";
 import { memoizeJsonSchema } from "@/server/mcp/json-schema-memo";
-import { instrumentMcpToolHandler } from "@/server/mcp/instrumentation";
+import {
+  instrumentMcpToolHandler,
+  instrumentMcpToolInput,
+} from "@/server/mcp/instrumentation";
 import { submitIndexNowUrlsTool } from "@/server/mcp/tools/submit-indexnow-urls";
 import { getBacklinksOverviewTool } from "@/server/mcp/tools/get-backlinks-overview";
 import { getBacklinksProfileTool } from "@/server/mcp/tools/get-backlinks-profile";
@@ -37,6 +41,7 @@ import { getDomainOverviewTool } from "@/server/mcp/tools/get-domain-overview";
 import { addRankTrackingKeywordsTool } from "@/server/mcp/tools/add-rank-tracking-keywords";
 import { createRankTrackerTool } from "@/server/mcp/tools/create-rank-tracker";
 import { estimateRankTrackerCostTool } from "@/server/mcp/tools/estimate-rank-tracker-cost";
+import { getRankHistoryTool } from "@/server/mcp/tools/get-rank-history";
 import { getRankTrackerTool } from "@/server/mcp/tools/get-rank-tracker";
 import { removeRankTrackingKeywordsTool } from "@/server/mcp/tools/remove-rank-tracking-keywords";
 import { pinRankTrackingKeywordsTool } from "@/server/mcp/tools/pin-rank-tracking-keywords";
@@ -109,6 +114,7 @@ import {
   listReportTemplatesTool,
   saveReportTemplateTool,
 } from "@/server/mcp/tools/report-template-tools";
+import { getSuggestedKeywordsTool } from "@/server/mcp/tools/get-suggested-keywords";
 import { researchKeywordsTool } from "@/server/mcp/tools/research-keywords";
 import { saveKeywordsTool } from "@/server/mcp/tools/save-keywords";
 import {
@@ -223,7 +229,13 @@ function registerOpenSeoTool<Input extends ToolSchema>(
     tool.name,
     {
       ...tool.config,
-      inputSchema: schemas.inputSchema,
+      // Wrapped per request, outside the isolate-wide cache: a rejection is
+      // reported against this request's caller.
+      inputSchema: instrumentMcpToolInput(
+        tool.name,
+        schemas.inputSchema,
+        authProps,
+      ),
       outputSchema: schemas.outputSchema,
     },
     async (args, context) => {
@@ -270,6 +282,7 @@ export function registerOpenSeoTools(
   register(syncFindingsVikunjaTool);
   register(listSavedKeywordsTool);
   register(removeSavedKeywordsTool);
+  register(getSuggestedKeywordsTool);
   register(researchKeywordsTool);
   register(saveKeywordsTool);
   register(getDomainOverviewTool);
@@ -295,6 +308,7 @@ export function registerOpenSeoTools(
   register(exportAiVisibilityDataTool);
   register(createRankTrackerTool);
   register(getRankTrackerTool);
+  register(getRankHistoryTool);
   register(addRankTrackingKeywordsTool);
   register(removeRankTrackingKeywordsTool);
   register(pinRankTrackingKeywordsTool);
@@ -378,7 +392,10 @@ export function createOpenSeoMcpServer(
         (supportsApps
           ? "Search Console and SERP research return data without opening UI. Optional interactive views use show_search_console_performance or show_serp_results with an existing resultId; reuse that result rather than fetching it again. show_search_console_performance also provides the Google connection prompt when needed. "
           : "") +
-        "Tools cannot purchase credits or charge payment cards. If a tool reports depleted credits, its billing URL is available for the user to open.",
+        "Tools cannot purchase credits or charge payment cards. If a tool reports depleted credits, its billing URL is available for the user to open." +
+        (authProps[MCP_AUTH_CONTEXT_PROP].guestClaimToken
+          ? " This connection uses a guest OpenSEO account: the user connected without signing up. It has the same free credits as a new account. Adding credits, connecting Google Search Console or Google Analytics, and using the OpenSEO web app need a full account; whoami gives the link that creates one; signing up in the browser that connected OpenSEO keeps the user's projects and this connection."
+          : ""),
     },
   );
 
