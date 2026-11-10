@@ -12,7 +12,7 @@ concurrency:
 
 jobs:
   ci:
-    runs-on: ubuntu-latest
+    runs-on: jog
 
     steps:
       - name: Checkout
@@ -65,7 +65,7 @@ jobs:
         run: pnpm --dir web run build
 
   docker-build:
-    runs-on: ubuntu-latest
+    runs-on: jog
 
     steps:
       - name: Checkout
@@ -88,7 +88,7 @@ jobs:
           cache-to: type=gha,mode=max
 
   standalone-image:
-    runs-on: ubuntu-latest
+    runs-on: jog
 
     steps:
       - name: Checkout
