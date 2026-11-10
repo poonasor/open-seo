@@ -12,7 +12,12 @@ concurrency:
 
 jobs:
   ci:
-    runs-on: ubuntu-latest
+    # Keep fork and mirror PR code off the shared jog runner.
+    # Same rule as the repository gate in pr-preview.yml.
+    if: >-
+      github.event_name == 'push' ||
+      github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: jog
 
     steps:
       - name: Checkout
@@ -65,7 +70,12 @@ jobs:
         run: pnpm --dir web run build
 
   docker-build:
-    runs-on: ubuntu-latest
+    # Keep fork and mirror PR code off the shared jog runner.
+    # Same rule as the repository gate in pr-preview.yml.
+    if: >-
+      github.event_name == 'push' ||
+      github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: jog
 
     steps:
       - name: Checkout
@@ -88,7 +98,12 @@ jobs:
           cache-to: type=gha,mode=max
 
   standalone-image:
-    runs-on: ubuntu-latest
+    # Keep fork and mirror PR code off the shared jog runner.
+    # Same rule as the repository gate in pr-preview.yml.
+    if: >-
+      github.event_name == 'push' ||
+      github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: jog
 
     steps:
       - name: Checkout

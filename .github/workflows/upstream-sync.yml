@@ -24,7 +24,7 @@ jobs:
   sync:
     # This file is for forks. On the upstream repo the merge would be a no-op.
     if: github.repository != 'every-app/open-seo'
-    runs-on: ubuntu-latest
+    runs-on: jog
     timeout-minutes: 20
     steps:
       - name: Checkout fork main
