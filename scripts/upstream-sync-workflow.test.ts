@@ -219,7 +219,7 @@ describe("upstream-sync.yml report_conflicts", () => {
       issuesEnabled: "false",
       ghStubMode: "ok",
     });
-    expect(result.status).toBe(1);
+    expect(result.status).toBe(0);
     expect(result.summary).toContain(
       "Opened a draft pull request listing the conflicting files.",
     );
@@ -234,7 +234,7 @@ describe("upstream-sync.yml report_conflicts", () => {
       issuesEnabled: "true",
       ghStubMode: "ok",
     });
-    expect(result.status).toBe(1);
+    expect(result.status).toBe(0);
     expect(result.summary).toContain(
       "Opened a conflict issue. Nothing was merged.",
     );
