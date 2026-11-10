@@ -216,13 +216,17 @@ jobs:
                   note "Opened a conflict issue. Nothing was merged."
                 else
                   note "Could not open a conflict issue. Nothing was merged."
+                  exit 1
                 fi
               fi
-              exit 1
+              exit 0
             fi
 
             # Issues are disabled. Report on the sync pull request instead.
-            if [[ -z "$remote_sync_sha" ]]; then
+            # A pull request needs at least one commit main lacks. When the
+            # branch is missing or has none, push an empty marker commit.
+            if [[ -z "$remote_sync_sha" ]] \
+              || [[ -z "$(git rev-list --max-count=1 "${fork_main}..${remote_sync_sha}")" ]]; then
               git checkout --no-track -B "$SYNC_BRANCH" origin/main
               git commit --allow-empty -m "$MARKER_MSG"
               push_sync
@@ -252,9 +256,11 @@ jobs:
                 note "Opened a draft pull request listing the conflicting files. The failed merge was not pushed."
               else
                 note "Could not open a pull request listing the conflicting files. Check that Actions may create pull requests. The failed merge was not pushed."
+                exit 1
               fi
             fi
-            exit 1
+            # The conflict is reported on a pull request, so the job succeeds.
+            exit 0
           }
 
           # Returns 0 after creating a merge commit.
