@@ -9,6 +9,10 @@ when:
 steps:
   - name: ci
     image: node:22-bookworm
+    environment:
+      # In the container `localhost` can bind to ::1 while the web prerender crawler dials 127.0.0.1
+      # (ECONNREFUSED in `web build`). Prefer IPv4 for DNS results.
+      NODE_OPTIONS: --dns-result-order=ipv4first
     commands:
       - corepack enable
       - pnpm install --frozen-lockfile
