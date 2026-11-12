@@ -1,0 +1,24 @@
+# Self-hosted Woodpecker CI (ci.perpetualmedia.ca) for the poonasor/open-seo fork.
+# Port of the "ci" job in .github/workflows/ci.yml. This directory is fork-only and
+# additive, so it never conflicts with the upstream sync.
+# Not ported yet: docker-build and standalone-image (need a privileged agent / trusted repo).
+when:
+  - event: [push, pull_request]
+    branch: main
+
+steps:
+  - name: ci
+    image: node:22-bookworm
+    commands:
+      - corepack enable
+      - pnpm install --frozen-lockfile
+      - pnpm run ci:check
+      - pnpm run test:ci
+      # leanWorkerBundle generateBundle assertion (eager-bundle guard)
+      - pnpm vite build
+      - pnpm build:standalone
+      - pnpm test:standalone:gateway
+      - pnpm --dir web install --frozen-lockfile
+      - pnpm --dir web run test:protection
+      - pnpm --dir web run types:check
+      - pnpm --dir web run build
