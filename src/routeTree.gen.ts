@@ -35,6 +35,7 @@ import { Route as ApiHealthRouteImport } from './routes/api/health'
 import { Route as ApiPrivacyRegionRouteImport } from './routes/api/privacy-region'
 import { Route as ApiSignUpStatusRouteImport } from './routes/api/sign-up-status'
 import { Route as RReportIdRouteImport } from './routes/r/$reportId'
+import { Route as StripeProjectsLoginRouteImport } from './routes/stripe-projects.login'
 import { Route as AppBillingFixPaymentRouteImport } from './routes/_app/billing_.fix-payment'
 import { Route as AppHelpDataforseoApiKeyRouteImport } from './routes/_app/help/dataforseo-api-key'
 import { Route as AppHelpOpenrouterApiKeyRouteImport } from './routes/_app/help/openrouter-api-key'
@@ -215,6 +216,11 @@ const ApiSignUpStatusRoute = ApiSignUpStatusRouteImport.update({
 const RReportIdRoute = RReportIdRouteImport.update({
   id: '/r/$reportId',
   path: '/r/$reportId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const StripeProjectsLoginRoute = StripeProjectsLoginRouteImport.update({
+  id: '/stripe-projects/login',
+  path: '/stripe-projects/login',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AppBillingFixPaymentRoute = AppBillingFixPaymentRouteImport.update({
@@ -521,6 +527,7 @@ export interface FileRoutesByFullPath {
   '/api/privacy-region': typeof ApiPrivacyRegionRoute
   '/api/sign-up-status': typeof ApiSignUpStatusRoute
   '/r/$reportId': typeof RReportIdRoute
+  '/stripe-projects/login': typeof StripeProjectsLoginRoute
   '/p/$projectId': typeof AppPProjectIdRouteRouteWithChildren
   '/billing/fix-payment': typeof AppBillingFixPaymentRoute
   '/help/dataforseo-api-key': typeof AppHelpDataforseoApiKeyRoute
@@ -596,6 +603,7 @@ export interface FileRoutesByTo {
   '/api/privacy-region': typeof ApiPrivacyRegionRoute
   '/api/sign-up-status': typeof ApiSignUpStatusRoute
   '/r/$reportId': typeof RReportIdRoute
+  '/stripe-projects/login': typeof StripeProjectsLoginRoute
   '/billing/fix-payment': typeof AppBillingFixPaymentRoute
   '/help/dataforseo-api-key': typeof AppHelpDataforseoApiKeyRoute
   '/help/openrouter-api-key': typeof AppHelpOpenrouterApiKeyRoute
@@ -669,6 +677,7 @@ export interface FileRoutesById {
   '/api/privacy-region': typeof ApiPrivacyRegionRoute
   '/api/sign-up-status': typeof ApiSignUpStatusRoute
   '/r/$reportId': typeof RReportIdRoute
+  '/stripe-projects/login': typeof StripeProjectsLoginRoute
   '/_app/': typeof AppIndexRoute
   '/_app/p/$projectId': typeof AppPProjectIdRouteRouteWithChildren
   '/_app/billing_/fix-payment': typeof AppBillingFixPaymentRoute
@@ -748,6 +757,7 @@ export interface FileRouteTypes {
     | '/api/privacy-region'
     | '/api/sign-up-status'
     | '/r/$reportId'
+    | '/stripe-projects/login'
     | '/p/$projectId'
     | '/billing/fix-payment'
     | '/help/dataforseo-api-key'
@@ -823,6 +833,7 @@ export interface FileRouteTypes {
     | '/api/privacy-region'
     | '/api/sign-up-status'
     | '/r/$reportId'
+    | '/stripe-projects/login'
     | '/billing/fix-payment'
     | '/help/dataforseo-api-key'
     | '/help/openrouter-api-key'
@@ -895,6 +906,7 @@ export interface FileRouteTypes {
     | '/api/privacy-region'
     | '/api/sign-up-status'
     | '/r/$reportId'
+    | '/stripe-projects/login'
     | '/_app/'
     | '/_app/p/$projectId'
     | '/_app/billing_/fix-payment'
@@ -965,6 +977,7 @@ export interface RootRouteChildren {
   ApiPrivacyRegionRoute: typeof ApiPrivacyRegionRoute
   ApiSignUpStatusRoute: typeof ApiSignUpStatusRoute
   RReportIdRoute: typeof RReportIdRoute
+  StripeProjectsLoginRoute: typeof StripeProjectsLoginRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   ApiAutumnSplatRoute: typeof ApiAutumnSplatRoute
   ApiWaEventRoute: typeof ApiWaEventRoute
@@ -1160,6 +1173,13 @@ declare module '@tanstack/react-router' {
       path: '/r/$reportId'
       fullPath: '/r/$reportId'
       preLoaderRoute: typeof RReportIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/stripe-projects/login': {
+      id: '/stripe-projects/login'
+      path: '/stripe-projects/login'
+      fullPath: '/stripe-projects/login'
+      preLoaderRoute: typeof StripeProjectsLoginRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_app/billing_/fix-payment': {
@@ -1750,6 +1770,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPrivacyRegionRoute: ApiPrivacyRegionRoute,
   ApiSignUpStatusRoute: ApiSignUpStatusRoute,
   RReportIdRoute: RReportIdRoute,
+  StripeProjectsLoginRoute: StripeProjectsLoginRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
   ApiAutumnSplatRoute: ApiAutumnSplatRoute,
   ApiWaEventRoute: ApiWaEventRoute,

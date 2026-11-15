@@ -2,7 +2,7 @@
   "version": "6",
   "dialect": "sqlite",
   "id": "ca115e9f-9243-4a73-bda1-c935b8248d38",
-  "prevId": "2af1f111-808a-4d2d-89ad-8a95876de74f",
+  "prevId": "aaa2d6cc-4ded-4edb-b77d-e2138268db40",
   "tables": {
     "account_deletion_requests": {
       "name": "account_deletion_requests",
