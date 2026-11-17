@@ -1,0 +1,29 @@
+# Self-hosted Woodpecker CI (ci.perpetualmedia.ca) for the poonasor/open-seo fork.
+# Daily upstream sync, ported from .github/workflows/upstream-sync.yml when the
+# jog workflows were disabled (this fork has no GitHub Actions runner, so its
+# scheduled runs queued for 24h and were cancelled instead of syncing): merges
+# every-app/open-seo main into sync/upstream and opens or updates one pull
+# request into main. main is never pushed.
+# Requires the Woodpecker repo secret `github_token` (contents:write,
+# pull-requests:write, issues:write), exposed on cron and manual events only.
+# The cron itself lives on ci.perpetualmedia.ca: repo poonasor/open-seo, cron
+# `upstream-sync`, schedule 15 12 * * * (daily, the old workflow's schedule),
+# branch main. This directory is fork-only and additive, so it never conflicts
+# with the upstream sync.
+when:
+  - event: cron
+    cron: upstream-sync
+  - event: manual
+    branch: main
+
+steps:
+  - name: upstream-sync
+    image: node:22-bookworm
+    environment:
+      GIT_TERMINAL_PROMPT: "0"
+    commands:
+      # gh is not in Debian bookworm; use gh's own apt repository.
+      - curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg -o /usr/share/keyrings/githubcli-archive-keyring.gpg
+      - echo "deb [arch=amd64 signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" > /etc/apt/sources.list.d/github-cli-stable.list
+      - apt-get update -qq && apt-get install -y -qq gh
+      - bash .woodpecker/upstream-sync.sh

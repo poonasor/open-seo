@@ -5,11 +5,13 @@ name: Upstream sync
 # --force-with-lease so the pull request stays a merge of current main.
 # main is never pushed. A conflict aborts before that push.
 
-on:
-  schedule:
-    # 12:15 UTC every day. Off the hour so it misses the schedule stampede.
-    - cron: "15 12 * * *"
-  workflow_dispatch:
+# Disabled on the poonasor fork (2026-11-17, jog runner retired): no GitHub
+# Actions runner serves this fork, so scheduled runs queued for 24h and were
+# cancelled instead of syncing. The sync now runs on self-hosted Woodpecker:
+# the cron `upstream-sync` (15 12 * * * daily, branch main) fires
+# .woodpecker/upstream-sync.yaml, which runs .woodpecker/upstream-sync.sh — a
+# port of the job below. Re-adding a trigger here would queue runs again
+# until a runner is registered.
 
 permissions:
   contents: write

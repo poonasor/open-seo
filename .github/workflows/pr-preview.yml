@@ -13,17 +13,11 @@ name: PR Preview
 # are how alchemy fetches its state-store token via an edge-preview worker),
 # CLOUDFLARE_ACCOUNT_ID, ENV_PREVIEW (.env.preview contents).
 
-on:
-  pull_request:
-    types: [opened, synchronize, reopened, closed]
-    # Skip PRs that can't change the deployed worker. Filters see the PR's
-    # full file list, so deploy and close-time destroy stay consistent.
-    paths-ignore:
-      - "**/*.md"
-      - docs/**
-      - .agents/**
-      - web/**
-      - tests/badseo/**
+# Disabled on the poonasor fork (2026-11-17, jog runner retired): the fork has
+# no GitHub Actions runner, and the job's repository gate already kept this
+# workflow inert here (it only ever ran for bensenescu/open-seo and
+# every-app/private-open-seo). Previews on this fork run locally from a
+# worktree (docs/maintainers/preview-deployments.md, "Public-mirror PRs").
 
 # A newer push supersedes any in-flight deploy for the same PR (alchemy's
 # per-resource state reconciles cleanly on the next run); a close-triggered
