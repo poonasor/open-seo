@@ -1,10 +1,11 @@
 name: CI
 
-on:
-  pull_request:
-  push:
-    branches:
-      - main
+# Disabled on the poonasor fork (2026-11-17, jog runner retired): the fork has
+# no GitHub Actions runner, so push and pull_request runs queued until GitHub
+# cancelled them after 24h. This fork's CI runs on self-hosted Woodpecker
+# (.woodpecker/ci.yaml); docker-build and standalone-image are not ported
+# (they need a privileged/trusted agent — see the ci.yaml header). The job
+# bodies stay for the upstream repo, where they run on hosted runners.
 
 concurrency:
   group: ci-${{ github.ref }}
