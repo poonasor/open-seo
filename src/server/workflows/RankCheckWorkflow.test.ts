@@ -127,6 +127,10 @@ function runWorkflow(
   );
 }
 
+beforeEach(() => {
+  mocks.runQueuedCheck.mockResolvedValue({ stragglers: [], timedOut: false });
+});
+
 describe("rank check workflow credit ceiling", () => {
   beforeEach(() => {
     mocks.getConfigById.mockResolvedValue({ isActive: true });
@@ -143,7 +147,7 @@ describe("rank check workflow credit ceiling", () => {
   it("rejects a keyword-list race before balance or DataForSEO calls", async () => {
     mocks.getKeywordsForConfig.mockResolvedValue(keywords(4));
 
-    await expect(runWorkflow({ maxCostCredits: 18 })).rejects.toThrow();
+    await expect(runWorkflow({ maxCostCredits: 10 })).rejects.toThrow();
 
     expect(mocks.autumnCheck).not.toHaveBeenCalled();
     expect(mocks.createDataforseoClient).not.toHaveBeenCalled();
@@ -202,7 +206,7 @@ describe("rank check workflow credit ceiling", () => {
   // callers without a ceiling — every scheduled check — must not be treated
   // as approving zero credits.
   it.each([
-    ["at the approved ceiling", 18, 3],
+    ["at the approved ceiling", 10, 3],
     ["without a ceiling", undefined, 5],
   ])("checks the reloaded list %s", async (_label, maxCostCredits, count) => {
     mocks.getKeywordsForConfig.mockResolvedValue(keywords(count));
@@ -215,6 +219,7 @@ describe("rank check workflow credit ceiling", () => {
     expect(mocks.runQueuedCheck).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({ keywords: keywords(count) }),
+      expect.any(Number),
     );
   });
 });
@@ -247,7 +252,10 @@ describe("rank check finalization", () => {
   });
 
   it("says the provider was delayed when no task left its queue", async () => {
-    mocks.runQueuedCheck.mockResolvedValueOnce(true);
+    mocks.runQueuedCheck.mockResolvedValueOnce({
+      stragglers: [],
+      timedOut: true,
+    });
 
     await runWorkflow({});
 

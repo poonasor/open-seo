@@ -15,6 +15,8 @@ import * as sqliteLocalSeo from "./local-seo.schema";
 import * as sqliteFindings from "./findings.schema";
 import * as sqliteWebAnalytics from "./web-analytics.schema";
 import * as sqliteStripeProjects from "./stripe-projects.schema";
+import * as sqliteEmbeds from "./embeds.schema";
+import * as sqliteEveryAppTransfer from "./every-app-transfer.schema";
 import * as pgApp from "./pg/app.schema";
 import * as pgProjectContext from "./pg/project-context.schema";
 import * as pgReports from "./pg/reports.schema";
@@ -31,6 +33,8 @@ import * as pgLocalSeo from "./pg/local-seo.schema";
 import * as pgFindings from "./pg/findings.schema";
 import * as pgWebAnalytics from "./pg/web-analytics.schema";
 import * as pgStripeProjects from "./pg/stripe-projects.schema";
+import * as pgEmbeds from "./pg/embeds.schema";
+import * as pgEveryAppTransfer from "./pg/every-app-transfer.schema";
 
 // Canonical schema barrel. Repositories import their tables from here and the
 // provider-aware `db` from "@/db", so each repository is written ONCE for both
@@ -57,7 +61,9 @@ type AppSchema = typeof sqliteApp &
   typeof sqliteLocalSeo &
   typeof sqliteFindings &
   typeof sqliteWebAnalytics &
-  typeof sqliteStripeProjects;
+  typeof sqliteStripeProjects &
+  typeof sqliteEmbeds &
+  typeof sqliteEveryAppTransfer;
 
 const runtimeSchema =
   getDatabaseProvider() === "postgres"
@@ -78,6 +84,8 @@ const runtimeSchema =
         ...pgFindings,
         ...pgWebAnalytics,
         ...pgStripeProjects,
+        ...pgEmbeds,
+        ...pgEveryAppTransfer,
       }
     : {
         ...sqliteApp,
@@ -96,6 +104,8 @@ const runtimeSchema =
         ...sqliteFindings,
         ...sqliteWebAnalytics,
         ...sqliteStripeProjects,
+        ...sqliteEmbeds,
+        ...sqliteEveryAppTransfer,
       };
 
 // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- guarded by schema-parity.test.ts
@@ -166,4 +176,7 @@ export const {
   webAnalyticsEvents,
   stripeProjectsGrants,
   stripeProjectsResources,
+  projectEmbeds,
+  everyAppTransfers,
+  everyAppTransferUsers,
 } = schema;

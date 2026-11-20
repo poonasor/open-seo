@@ -526,6 +526,20 @@
       "when": 1793225105758,
       "tag": "0074_flat_norrin_radd",
       "breakpoints": true
+    },
+    {
+      "idx": 75,
+      "version": "6",
+      "when": 1795027967479,
+      "tag": "0075_project_embeds",
+      "breakpoints": true
+    },
+    {
+      "idx": 76,
+      "version": "6",
+      "when": 1795118529545,
+      "tag": "0076_every_app_transfers",
+      "breakpoints": true
     }
   ]
 }

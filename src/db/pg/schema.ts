@@ -14,3 +14,5 @@ export * from "./local-seo.schema";
 export * from "./findings.schema";
 export * from "./web-analytics.schema";
 export * from "./stripe-projects.schema";
+export * from "./embeds.schema";
+export * from "./every-app-transfer.schema";
