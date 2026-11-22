@@ -21,6 +21,10 @@ steps:
     image: node:22-bookworm
     environment:
       GIT_TERMINAL_PROMPT: "0"
+      # Repo secrets are not injected unless the step names them. The stored
+      # secret is github_token; this step reads GITHUB_TOKEN.
+      GITHUB_TOKEN:
+        from_secret: github_token
     commands:
       # gh is not in Debian bookworm; use gh's own apt repository.
       - curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg -o /usr/share/keyrings/githubcli-archive-keyring.gpg
