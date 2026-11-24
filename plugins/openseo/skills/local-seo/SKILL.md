@@ -62,19 +62,20 @@ Always build the profile snapshot table for the whole chain — one `search_loca
 
 ## Output format
 
-`h1`: the business name.
+Title: "Local SEO audit", followed by the location when the business has several ("Local SEO audit: Naperville"), or by the business name when it is not the project's own.
 
 If a report template applies (see `seo-report`), its sections and tone replace this list.
 
-Sections in this order:
+Use the report shape in `seo-report`: the verdict, "What to do", the moves, then the data. For a local audit:
 
-1. **Snapshot** — one or two opening sentences, then a table of category, rating, review count, and claimed status. One row per location for a chain.
-2. **The one fix** — one finding. Category and claim problems outrank posting cadence every time.
-3. **Head to head** — a table of signal, this business, the best competitor, and the gap. Cover categories, reviews (count, recency, owner replies), hours and profile completeness, and the listing's website link.
-4. **Maps coverage** — the grid drawn as described in "Drawing the grid" below, its four stat blocks, then what it shows: where visibility drops off, in which direction, and who wins there.
-5. **Q&A and posting** — only when the basics are already competitive.
-6. **What to do next** — an ordered list.
-7. **How this report was made** — opens with the skill link line from `seo-report`, pointing at `https://openseo.so/docs/skills/local-seo` ("OpenSEO Local SEO skill"), then which tools returned what, plus a note reading each missing grid rank against that point's `resultsCount` rather than calling it invisibility.
+1. **Verdict**: where the listing stands against the best competitor, and the one fix.
+2. **The moves**: the one fix first, then at most two more. Category and claim problems outrank posting cadence every time. Q&A and posting become a move only when the basics are already competitive.
+   - **Facts**: the signal for this business beside the best competitor's ("38 reviews", "212 for Rival"), and the grid result ("Top 3 at 4 of 9 points").
+   - **Do this**: the exact setting to change in the Google Business Profile, with the value to set nested under it: the category to pick, the hours to add, the page the website link should point at.
+   - **Why**: what the head-to-head and the grid show.
+3. **Head to head**: a table of signal, this business, the best competitor, and the gap. Cover categories, reviews (count, recency, owner replies), hours and profile completeness, claimed status, and the listing's website link. The signals the moves fix are the `pick` rows. For a chain, add a snapshot table with one row per location.
+4. **Maps coverage**: the grid drawn as described in "Drawing the grid" below, its four stat blocks, then what it shows: where visibility drops off, in which direction, who wins there, and which move answers it.
+5. **How this report was made**: opens with the skill link line from `seo-report`, pointing at `https://openseo.so/docs/skills/local-seo` ("OpenSEO Local SEO skill"), then which tools returned what, plus a note reading each missing grid rank against that point's `resultsCount` rather than calling it invisibility.
 
 ## Drawing the grid
 
@@ -94,17 +95,17 @@ Local rank trackers (SE Ranking, Local Falcon, BrightLocal) all draw the same pi
 | over 15–20 | `#A31515` | white  |
 | not found | `#A3ADB8` | white   |
 
-**The SVG.** North up, west left, one circle per grid point on a 120-unit pitch with radius 22, so a 3x3 uses `viewBox="0 0 360 400"` and a 5x5 `viewBox="0 0 600 640"`. Set `width` to 360 for a 3x3 and 480 for a 5x5 so the drawing does not stretch to the column; the template already caps it at 100% on a phone. Print the value inside each circle (bold, 15px, centered with `text-anchor="middle"` and `dominant-baseline="central"`). Give the storefront circle a second ring: the same circle again with `fill="none"`, a 2px dark stroke, radius 27. Add an "N" label above the top row and the spacing under the bottom row ("2 km between points"). Then a `figcaption` that lists every value as text in reading order, because a chart never carries a number that is not also written out. First row of a 3x3, for the agent to repeat:
+**The SVG.** North up, west left, one circle per grid point on a 120-unit pitch with radius 22, so a 3x3 uses `viewBox="0 0 360 400"` and a 5x5 `viewBox="0 0 600 640"`. Set `width` to 360 for a 3x3 and 480 for a 5x5 so the drawing does not stretch to the column; the template already caps it at 100% on a phone. Print the value inside each circle (bold, 15px, centered with `text-anchor="middle"` and `dominant-baseline="central"`). Give the storefront circle a second ring: the same circle again with `fill="none"`, a 2px dark stroke, radius 27. Add an "N" label above the top row and the spacing under the bottom row, in the unit `get_local_rank_grid` returns as `distanceUnit` ("1.2 mi between points" or "2 km between points"). Then a `figcaption` that lists every value as text in reading order, because a chart never carries a number that is not also written out. First row of a 3x3, for the agent to repeat:
 
 ```html
-<svg viewBox="0 0 360 400" width="360" role="img" aria-label="Rank grid, 3 by 3, 2 km spacing">
+<svg viewBox="0 0 360 400" width="360" role="img" aria-label="Rank grid, 3 by 3, 1.2 mi spacing">
 <text x="180" y="18" text-anchor="middle" font-size="12" fill="#8f8f8f">N</text>
 <circle cx="60" cy="80" r="22" fill="#3F9D4E"/><text x="60" y="80" text-anchor="middle" dominant-baseline="central" font-size="15" font-weight="700" fill="#fff">3.0</text>
 <circle cx="180" cy="80" r="22" fill="#8BC34A"/><text x="180" y="80" text-anchor="middle" dominant-baseline="central" font-size="15" font-weight="700" fill="#fff">3.5</text>
 <circle cx="300" cy="80" r="22" fill="#8BC34A"/><text x="300" y="80" text-anchor="middle" dominant-baseline="central" font-size="15" font-weight="700" fill="#fff">3.5</text>
 <!-- rows 2 and 3 at cy 200 and 320; the storefront (cx 180, cy 200) also gets: -->
 <circle cx="180" cy="200" r="27" fill="none" stroke="#0a0a0a" stroke-width="2"/>
-<text x="180" y="372" text-anchor="middle" font-size="12" fill="#8f8f8f">2 km between points</text>
+<text x="180" y="372" text-anchor="middle" font-size="12" fill="#8f8f8f">1.2 mi between points</text>
 </svg>
 ```
 
@@ -117,19 +118,19 @@ The `figcaption` lists every value in reading order: "Average position across 2 
 3. Avg. position per keyword: one row per keyword with its mean and how many of its points were top 3.
 4. Who ranks #1 most often: count each point's `topResult` across all keywords and list businesses by share.
 
-**Reading it.** Say where visibility drops off by compass direction and by distance ("2 km south, around 75th St" when the user has given you a landmark; otherwise the direction alone), and name who wins there from `topResult`. Proximity to a rival's storefront explains most drop-offs; say so when the rival's coordinate confirms it.
+**Reading it.** Say where visibility drops off by compass direction and by distance in `distanceUnit` ("1.2 mi south, around 75th St" when the user has given you a landmark; otherwise the direction alone), and name who wins there from `topResult`. Proximity to a rival's storefront explains most drop-offs; say so when the rival's coordinate confirms it.
 
 **The figure.** Always wrap the drawing in a widget figure. The viewer renders it as a live Google Map fitted to the grid, with a keyword filter and a popup per point, and hides the SVG while the map is showing:
 
 ```html
 <figure data-widget="rank-grid">
-<script type="application/json">{"spacingKm":1,"keywords":[{"keyword":"italian restaurant","points":[{"row":0,"col":0,"lat":41.7918,"lng":-88.1714,"rank":3,"top":"La Sorella di Francesca"}]}]}</script>
+<script type="application/json">{"spacingKm":2,"distanceUnit":"mi","keywords":[{"keyword":"italian restaurant","points":[{"row":0,"col":0,"lat":41.7918,"lng":-88.1714,"rank":3,"top":"La Sorella di Francesca"}]}]}</script>
 <svg …the drawing above…</svg>
 <figcaption>…</figcaption>
 </figure>
 ```
 
-Every point the tool returned goes in `points`: its `row` and `col`, `latitude` as `lat`, `longitude` as `lng`, `rank` (`null` when the business was not found there) and `topResult.title` as `top`. Leave out a point whose search failed (`error: true`); the viewer shows that keyword as "search failed" there. One entry in `keywords` per grid you ran, all with the same center and spacing. The block is data: no comments, no trailing commas, nothing computed.
+`spacingKm` is the km spacing you passed to `get_local_rank_grid` (2 when you left it out). Set `distanceUnit` to the tool's `distanceUnit` (`"mi"` or `"km"`) so the map's spacing label matches the drawing. Every point the tool returned goes in `points`: its `row` and `col`, `latitude` as `lat`, `longitude` as `lng`, `rank` (`null` when the business was not found there) and `topResult.title` as `top`. Leave out a point whose search failed (`error: true`); the viewer shows that keyword as "search failed" there. One entry in `keywords` per grid you ran, all with the same center and spacing. The block is data: no comments, no trailing commas, nothing computed.
 
 ## Guardrails
 

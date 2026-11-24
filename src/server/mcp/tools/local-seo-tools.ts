@@ -1,6 +1,11 @@
 /* eslint-disable max-lines */
 import { z } from "zod";
 import {
+  DistanceUnit,
+  distanceUnitForMarket,
+  formatDistance,
+} from "@/shared/distance-unit";
+import {
   buildLocalGrid,
   localGridZoom,
   LOCAL_RANK_DEPTH,
@@ -14,8 +19,14 @@ import {
   type BusinessTaskOutcome,
   type LocalSerpTaskOutcome,
 } from "@/server/lib/dataforseo";
+import { DistanceUnitService } from "@/server/auth/distance-unit";
 import { AppError } from "@/server/lib/errors";
-import { buildCacheKey, getCached, setCached } from "@/server/lib/r2-cache";
+import {
+  buildCacheKey,
+  getCached,
+  getCachedStrict,
+  setCached,
+} from "@/server/lib/r2-cache";
 import { buildProjectMeta } from "@/server/mcp/context";
 import { mcpResponse } from "@/server/mcp/formatters";
 import {
@@ -675,7 +686,11 @@ export const listBusinessCategoriesTool = {
       if (!all) {
         // Free at DataForSEO, so this skips the metered client — see index.ts.
         all = (await fetchBusinessListingsCategories()).data;
-        await setCached(cacheKey, all, BUSINESS_CATEGORIES_TTL_SECONDS);
+        await setCached(cacheKey, all, BUSINESS_CATEGORIES_TTL_SECONDS).catch(
+          (error) => {
+            console.error("local-seo.categories.cache-write failed:", error);
+          },
+        );
       }
 
       const query = args.query?.toLowerCase();
@@ -910,6 +925,12 @@ export const getLocalRankGridTool = {
     inputSchema: getLocalRankGridInputSchema,
     outputSchema: z.looseObject({
       status: z.enum(["completed", "processing"]),
+      distanceUnit: z
+        .enum(DistanceUnit)
+        .optional()
+        .describe(
+          "The unit to write distances in for this user: their Settings choice, else miles for a US project and km otherwise.",
+        ),
       pointsReady: z.number().optional(),
       pointsTotal: z.number().optional(),
       retryAfterSeconds: z.number().optional(),
@@ -992,7 +1013,7 @@ export const getLocalRankGridTool = {
       languageCode,
     });
     const receipt = rankGridReceiptSchema.safeParse(
-      await getCached(receiptKey),
+      await getCachedStrict(receiptKey),
     );
     let taskIds: Array<string | null>;
     if (receipt.success) {
@@ -1105,8 +1126,12 @@ export const getLocalRankGridTool = {
       top10Count: ranks.filter((rank) => rank <= 10).length,
     };
 
+    const distanceUnit = await DistanceUnitService.get({
+      userId: context.auth.userId,
+      fallback: distanceUnitForMarket(context.project.locationCode),
+    });
     const text = [
-      `Local rank grid for "${args.keyword}" (${gridSize}x${gridSize}, ${spacingKm} km spacing, zoom ${zoom}, top ${LOCAL_RANK_DEPTH} checked).`,
+      `Local rank grid for "${args.keyword}" (${gridSize}x${gridSize}, ${formatDistance(spacingKm, distanceUnit)} between points, zoom ${zoom}, top ${LOCAL_RANK_DEPTH} checked). Write distances for this user in ${distanceUnit === DistanceUnit.Mi ? "miles" : "kilometers"} (distanceUnit "${distanceUnit}").`,
       formatMatchedBusiness(matchedBusiness),
       `Rank per point, north at the top ("–" = not among the results returned there, "x" = search failed but may still be charged):`,
       renderGrid(grid, gridSize),
@@ -1122,6 +1147,7 @@ export const getLocalRankGridTool = {
       meta: buildProjectMeta(context, args.projectId, `/p/${args.projectId}`),
       structuredContent: {
         status: "completed",
+        distanceUnit,
         grid,
         summary,
         matchedBusiness,
